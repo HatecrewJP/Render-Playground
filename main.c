@@ -31,10 +31,10 @@ LRESULT Wndproc(HWND WindowHandle, UINT Message, WPARAM WParam, LPARAM LParam){
 typedef union KeyDownState {
 	unsigned Value;
 	struct {
-		unsigned RepeatCount : 15;
-		unsigned ScanCode : 7;
+		unsigned RepeatCount : 16;
+		unsigned ScanCode : 8;
 		unsigned IsExtended : 1;
-		unsigned Reserved : 2;
+		unsigned Reserved : 4;
 		unsigned ContextCode : 1;
 		unsigned PreviousState : 1;
 		unsigned TransitionState : 1;
@@ -94,7 +94,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 			case WM_KEYDOWN: {
 				KeyDownState State;
 				State.Value = (unsigned)LParam;
-				printf("%u\n",State.RepeatCount);
+				printf("%u\n",State.ScanCode);
 
 			}break;
 			
