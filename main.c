@@ -1,7 +1,13 @@
 #include <windows.h>
 #include <stdio.h>
-typedef unsigned char byte;
+#include <d3d11.h>
+#include <dxgi1_2.h>
 
+#define DEBUG 1
+
+#define ArrayCount(x) (sizeof(x)/sizeof((x)[0]))
+
+typedef unsigned char byte;
 typedef int bool;
 
 
@@ -49,7 +55,6 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 	freopen_s(&fp, "CONOUT$", "w", stdout);
 	freopen_s(&fp, "CONOUT$", "w", stderr);
 
-
 	WNDCLASSA WindowClass;
 	WindowClass.style = CS_HREDRAW | CS_OWNDC | CS_VREDRAW;
 	WindowClass.lpfnWndProc = Wndproc;
@@ -79,9 +84,45 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 		hInst, 
 		NULL);
 
+	if(!WindowHandle){
+#ifdef DEBUG
+		ASSERT(0);
+#endif 
+		exit(-1);
+	}
 
+	UINT DeviceFlags = 0;
+#ifdef DEBUG
+	DeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif // DEBUG
+
+	D3D_FEATURE_LEVEL FeatureLevels[1] = {D3D_FEATURE_LEVEL_11_0};
+
+	RECT rc;
+	ASSERT(GetClientRect(WindowHandle, &rc));
+	UINT RectWidth = rc.right - rc.left;
+	UINT RectHeight = rc.bottom - rc.top;
+
+
+
+
+	ID3D11Device *Device = NULL;
+	ID3D11DeviceContext *DeviceContext = NULL;
+
+	UINT FeatureLevelCount = (sizeof(FeatureLevels) / sizeof((FeatureLevels)[0]));
+	HRESULT res = D3D11CreateDevice(NULL, D3D10_DRIVER_TYPE_WARP, 0, DeviceFlags, FeatureLevels, ArrayCount(FeatureLevels), D3D11_SDK_VERSION,&Device,NULL,&DeviceContext);
+	if(res != S_OK){
+		ASSERT(0);
+		exit(-1);
+	}
+	ASSERT(Device!=NULL && DeviceContext);
+
+	IDXGIDevice1 *DXGIDevice = NULL;
+	res = Device->lpVtbl->QueryInterface(Device, &IID_IDXGIDevice1, &DXGIDevice);
+	if(res != S_OK){
+		ASSERT(0);
+	}
 	
-
 
 	bool Running = 1;
 	while (Running) {
