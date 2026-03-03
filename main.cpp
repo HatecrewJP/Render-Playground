@@ -1,56 +1,42 @@
+#include "Ix64.h"
+
+
 #include <windows.h>
 #include <stdio.h>
 #include <math.h>
 
 
-#define DEBUG 1
 #define ArrayCount(x) (sizeof(x)/sizeof((x)[0]))
-#define ASSERT(x) if(!(x)) *(char*)0=0;
-
 #define ToBit(x) ((x)*8)
 
-typedef unsigned char byte;
 
-
-#define global static
-#define internal static
-
-global HDC GlobalDeviceContext = NULL;
-
-global bool NeedsResize = 0;
-
-struct ColorBGRA{
-	byte B;
-	byte G;
-	byte R;
-	byte A;
-};
-struct ColorRGBA{
-	byte R;
-	byte G;
-	byte B;
-	byte A;
+#include "Application.cpp"
+struct Win32ColorBGRA{
+	unsigned char B;
+	unsigned char G;
+	unsigned char R;
+	unsigned char A;
 };
 
+struct Win32FrameBuffer{
+	unsigned Width;
+	unsigned Height;
+	unsigned PixelSize;
+	Win32ColorBGRA **Pixels;
+	BITMAPINFO BMPInfo;
+};
 
-
-struct BackBuffer{
+struct Win32BackBuffer{
 	UINT Width;
 	UINT Height;
-	ColorBGRA *Data;
+	Win32ColorBGRA *Data;
 	UINT Stride;
 	WORD PixelSize;
 };
+global HDC GlobalDeviceContext = NULL;
+global bool NeedsResize = 0;
 
-struct FrameBuffer{
-	BITMAPINFO BMPInfo;
-	UINT Width;
-	UINT Height;
-	ColorBGRA **Pixels;
-	WORD PixelSize;
-};
-
-typedef struct KeyDownState{
+struct Win32KeyDownState{
 	unsigned RepeatCount : 16;
 	unsigned ScanCode : 8;
 	unsigned IsExtended : 1;
@@ -58,16 +44,17 @@ typedef struct KeyDownState{
 	unsigned ContextCode : 1;
 	unsigned PreviousState : 1;
 	unsigned TransitionState : 1;
-}KeyDownState;
+};
 
 
-FrameBuffer GlobalFrameBuffer;
 
-internal void DisplayBuffer(HWND WindowHandle, HDC DeviceContext, FrameBuffer *Buffer){
+Win32FrameBuffer GlobalFrameBuffer;
+
+internal void Win32DisplayBuffer(HWND WindowHandle, HDC DeviceContext, Win32FrameBuffer *Buffer){
 	ASSERT(WindowHandle);
 	ASSERT(DeviceContext);
 	ASSERT(Buffer);
-	
+
 	RECT rc;
 	ASSERT(GetClientRect(WindowHandle, &rc));
 	UINT RectWidth = rc.right - rc.left;
@@ -80,7 +67,9 @@ internal void DisplayBuffer(HWND WindowHandle, HDC DeviceContext, FrameBuffer *B
 	SetDIBitsToDevice(DeviceContext, 0, 0, BufferWidth, BufferHeight, 0, 0, 0, BufferHeight, BufferData, &BMPInfo, DIB_RGB_COLORS);
 }
 
-void ResizeFrameBuffer(struct FrameBuffer *FrameBuffer, struct BackBuffer *BackBuffer, UINT NewWidth, UINT NewHeight){
+
+
+internal void Win32ResizeFrameBuffer(struct Win32FrameBuffer *FrameBuffer, struct Win32BackBuffer *BackBuffer, UINT NewWidth, UINT NewHeight){
 	if((NewWidth > BackBuffer->Width) || (NewHeight > BackBuffer->Height)){
 		if(BackBuffer->Data){
 			VirtualFree(BackBuffer->Data, 0, MEM_RELEASE);
@@ -88,7 +77,7 @@ void ResizeFrameBuffer(struct FrameBuffer *FrameBuffer, struct BackBuffer *BackB
 		}
 		BackBuffer->Width = NewWidth;
 		BackBuffer->Height = NewHeight;
-		BackBuffer->Data = (ColorBGRA *)VirtualAlloc(NULL, BackBuffer->Width * BackBuffer->Height * BackBuffer->PixelSize, MEM_COMMIT, PAGE_READWRITE);
+		BackBuffer->Data = (Win32ColorBGRA *)VirtualAlloc(NULL, BackBuffer->Width * BackBuffer->Height * BackBuffer->PixelSize, MEM_COMMIT, PAGE_READWRITE);
 		ASSERT(BackBuffer->Data);
 	}
 
@@ -117,7 +106,7 @@ LRESULT Wndproc(HWND WindowHandle, UINT Message, WPARAM WParam, LPARAM LParam){
 		printf("WM_PAINT\n");
 		PAINTSTRUCT PaintStruct;
 		HDC DeviceContext = BeginPaint(WindowHandle, &PaintStruct);
-		DisplayBuffer(WindowHandle, DeviceContext,&GlobalFrameBuffer);
+		Win32DisplayBuffer(WindowHandle, DeviceContext,&GlobalFrameBuffer);
 
 		EndPaint(WindowHandle, &PaintStruct);
 		
@@ -134,45 +123,9 @@ LRESULT Wndproc(HWND WindowHandle, UINT Message, WPARAM WParam, LPARAM LParam){
 
 
 
-internal void RenderFrame(struct FrameBuffer *Buffer,int XOffset){
-	ASSERT(Buffer);
-	ColorBGRA *Pixels = *(Buffer->Pixels);
-	ASSERT(Pixels);
-	
-	int PosX = XOffset % Buffer->Width;
-	int PosY = 20;
-	int Radius = 20;
-
-	ColorBGRA Color;
-	Color.B = 255;
-	Color.G = 0;
-	Color.R = 0;
-	Color.A = 255;
 
 
-
-	for(int x = -Radius; x <= Radius; x++){
-		for(int y = -Radius; y <=Radius; y++){
-			int DistanceSquare = x * x + y * y;
-			if(DistanceSquare < Radius * Radius){
-				
-				int CoveredPixelX = max(PosX + x, 0);
-				int CoveredPixelY = max(PosY + y, 0);
-				unsigned Index = CoveredPixelX + CoveredPixelY * Buffer->Width;
-				Pixels[Index] = Color;
-				ASSERT(Index < Buffer->Height * Buffer->Width);
-			}
-			
-			
-
-		}
-	}
-
-	
-
-}
-
-internal void ClearBackBuffer(struct FrameBuffer *Buffer){
+internal void Win32ClearBackBuffer(struct Win32FrameBuffer *Buffer){
 	ASSERT(Buffer);
 	ASSERT(Buffer->Pixels);
 	ASSERT(*(Buffer->Pixels))
@@ -183,6 +136,8 @@ internal void ClearBackBuffer(struct FrameBuffer *Buffer){
 }
 
 
+
+#include "DebugWin32.cpp"
 int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
 {
 	FILE* fp;
@@ -221,7 +176,10 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 		NULL);
 
 	GlobalDeviceContext = GetDC(WindowHandle);
-	
+#ifdef DEBUG
+	DebugWindowHandle = WindowHandle;
+	DebugDeviceContext = GlobalDeviceContext;
+#endif
 	
 	if(!WindowHandle){
 #ifdef DEBUG
@@ -238,11 +196,11 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 
 
 
-	BackBuffer BackBuffer = {};
+	Win32BackBuffer BackBuffer = {};
 	BackBuffer.Width  = CurrentRect.right - CurrentRect.left;
 	BackBuffer.Height = CurrentRect.bottom - CurrentRect.top;
-	BackBuffer.PixelSize = sizeof(ColorBGRA);
-	BackBuffer.Data = (ColorBGRA*)VirtualAlloc(NULL, BackBuffer.Width * BackBuffer.Height * BackBuffer.PixelSize, MEM_COMMIT, PAGE_READWRITE);
+	BackBuffer.PixelSize = sizeof(Win32ColorBGRA);
+	BackBuffer.Data = (Win32ColorBGRA*)VirtualAlloc(NULL, BackBuffer.Width * BackBuffer.Height * BackBuffer.PixelSize, MEM_COMMIT, PAGE_READWRITE);
 	BackBuffer.Stride = BackBuffer.Width * BackBuffer.PixelSize;
 	ASSERT(BackBuffer.Data);
 
@@ -259,6 +217,10 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 	GlobalFrameBuffer.Width = BackBuffer.Width;
 	GlobalFrameBuffer.Pixels = &BackBuffer.Data;
 
+#ifdef DEBUG
+	DebugFrameBuffer = &GlobalFrameBuffer;
+#endif
+
 	bool Running = 1;
 
 	while (Running) {
@@ -272,7 +234,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 
 			switch (MessageIdentifier){
 			case WM_KEYDOWN: {
-				KeyDownState State;
+				Win32KeyDownState State;
 				ASSERT(sizeof(State)==sizeof(LParam))
 				memcpy(&State, &LParam, sizeof(State));
 
@@ -289,16 +251,16 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 			GetClientRect(WindowHandle, &NewRect);
 			UINT NewWidth = NewRect.right - NewRect.left;
 			UINT NewHeight = NewRect.bottom - NewRect.top;
-			ResizeFrameBuffer(&GlobalFrameBuffer, &BackBuffer,NewWidth,NewHeight);
+			Win32ResizeFrameBuffer(&GlobalFrameBuffer, &BackBuffer,NewWidth,NewHeight);
 			NeedsResize = 0;
 		}
 
 		static int Offset = 0;
-		ClearBackBuffer(&GlobalFrameBuffer);
-		RenderFrame(&GlobalFrameBuffer,Offset);
+		Win32ClearBackBuffer(&GlobalFrameBuffer);
+		RenderFrame((IScreenBuffer*) &GlobalFrameBuffer, Offset);
 		Offset++;
 	
-		DisplayBuffer(WindowHandle, GlobalDeviceContext,&GlobalFrameBuffer);
+		Win32DisplayBuffer(WindowHandle, GlobalDeviceContext,&GlobalFrameBuffer);
 		
 
 		
