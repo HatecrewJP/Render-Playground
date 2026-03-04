@@ -4,7 +4,7 @@
 #define ASSERT(x) if(!(x)) __debugbreak();
 typedef unsigned char byte;
 
-typedef struct IScreenBuffer{
+struct IScreenBuffer{
 	//CAREFUL WHEN CHANGING:
 	//Type Punning when passing to Application
 	unsigned Width;
@@ -12,4 +12,11 @@ typedef struct IScreenBuffer{
 	unsigned PixelSize;
 	unsigned unused;
 	void **Data;
+};
+struct IInput{
+	short MouseX;
+	short MouseY;
+	int LeftClick;
+	int RightClick;
+	int MiddleClick;
 };

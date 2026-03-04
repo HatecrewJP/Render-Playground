@@ -1,6 +1,6 @@
 #include "Ix64.h"
 
-
+#include "windowsx.h"
 #include <windows.h>
 #include <stdio.h>
 #include <math.h>
@@ -225,7 +225,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 
 	while (Running) {
 		MSG CurrentMessage;
-
+		IInput Input = {};
 		while (PeekMessageA(&CurrentMessage, 0, 0, 0, PM_REMOVE)) {
 			UINT MessageIdentifier = CurrentMessage.message;
 			unsigned long WParam = (unsigned long) CurrentMessage.wParam;
@@ -235,10 +235,19 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 			switch (MessageIdentifier){
 			case WM_KEYDOWN: {
 				Win32KeyDownState State;
-				ASSERT(sizeof(State)==sizeof(LParam))
-				memcpy(&State, &LParam, sizeof(State));
+				ASSERT(sizeof(State) == sizeof(LParam));
+				State = *(Win32KeyDownState *)&LParam;
 
 				printf("%u\n", State.ScanCode);
+			}break;
+			case WM_MOUSEMOVE: {
+				Input.LeftClick	  = (WParam & MK_LBUTTON) != 0;
+				Input.RightClick  = (WParam & MK_RBUTTON) != 0;
+				Input.MiddleClick = (WParam & MK_MBUTTON) != 0;
+				
+				Input.MouseX = GET_X_LPARAM(LParam);
+				Input.MouseY = GET_Y_LPARAM(LParam);
+				printf("LeftClick: %d, MouseX: %hd, MouseY: %hd\n", Input.LeftClick, Input.MouseX, Input.MouseY);
 			}break;
 			case WM_QUIT: {
 				Running = 0;
@@ -257,9 +266,9 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 
 		static int Offset = 0;
 		Win32ClearBackBuffer(&GlobalFrameBuffer);
-		RenderFrame((IScreenBuffer*) &GlobalFrameBuffer, Offset);
+		RenderFrame((IScreenBuffer*) &GlobalFrameBuffer, Offset,&Input);
 		Offset++;
-	
+		
 		Win32DisplayBuffer(WindowHandle, GlobalDeviceContext,&GlobalFrameBuffer);
 		
 

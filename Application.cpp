@@ -68,6 +68,9 @@ internal void NaiveRasterizeLine(IScreenBuffer *Buffer, Pos2 Start, Pos2 End){
 		if(CurrentPos.x >= Buffer->Width || CurrentPos.y >= Buffer->Height){
 			continue;
 		}
+		if(CurrentPos.x < 0 || CurrentPos.y < 0){
+			continue;
+		}
 
 		int Index = (int)CurrentPos.x + (int)CurrentPos.y * Buffer->Width;
 		Pixels[Index] = ColorBGRA{0,0,0,255};
@@ -84,7 +87,56 @@ internal void NaiveRasterizeTri(IScreenBuffer *Buffer, Pos2 VL, Pos2 VX, Pos2 VR
 	NaiveRasterizeLine(Buffer, VL, VR);
 
 }
+internal void RasterizePoint(IScreenBuffer *Buffer, Pos2 P, ColorBGRA Color){
+	ColorBGRA *Pixels = *(ColorBGRA **)Buffer->Data;
+	Pos2 CurrentPos;
+	CurrentPos.x = (float) round(P.x);
+	CurrentPos.y = (float) round(P.y);
+	int Index = (int)CurrentPos.x + (int)CurrentPos.y * Buffer->Width;
+	Pixels[Index] = Color;
+}
 
+internal void RasterizeQuadraticBezierCurve(IScreenBuffer *Buffer,Pos2 S, Pos2 E, Pos2 C){
+	ColorBGRA *Pixels = *(ColorBGRA **)Buffer->Data;
+	float LerpResolution = 0.0001f;
+	for(float t = 0; t <= 1; t += LerpResolution){
+		Pos2 CurrentPos;
+		/*CurrentPos.x = roundf((1-t) * (1 - t) * S.x + 2 * (1 - t) * t * C.x + t * t * E.x);
+		CurrentPos.y = roundf((1-t) * (1 - t) * S.y + 2 * (1 - t) * t * C.y + t * t * E.y);*/
+		CurrentPos.x = roundf(S.x + 2 * t * (C.x - S.x) + t * t * (E.x + S.x - 2*C.x));
+		CurrentPos.y = roundf(S.y + 2 * t * (C.y - S.y) + t * t * (E.y + S.y - 2*C.y));
+	
+		if(CurrentPos.x >= Buffer->Width || CurrentPos.y >= Buffer->Height){
+			continue;
+		}
+		if(CurrentPos.x < 0 || CurrentPos.y < 0){
+			continue;
+		}
+		int Index = (int)CurrentPos.x + (int)CurrentPos.y * Buffer->Width;
+		Pixels[Index] = ColorBGRA{255,0,0,255};
+	}
+}
+
+internal void RasterizeQuadraticBezierCurve2(IScreenBuffer *Buffer,Pos2 S, Pos2 E, Pos2 C){
+	ColorBGRA *Pixels = *(ColorBGRA **)Buffer->Data;
+	float LerpResolution = 0.0001f;
+	for(float t = 0; t <= 1; t += LerpResolution){
+		Pos2 CurrentPos;
+		/*CurrentPos.x = roundf((1-t) * (1 - t) * S.x + 2 * (1 - t) * t * C.x + t * t * E.x);
+		CurrentPos.y = roundf((1-t) * (1 - t) * S.y + 2 * (1 - t) * t * C.y + t * t * E.y);*/
+		CurrentPos.x = roundf(S.x + 2 * t * (C.x - S.x) + t * t * (E.x + S.x - 2*C.x));
+		CurrentPos.y = roundf(S.y + 2 * t * (C.y - S.y) + t * t * (E.y + S.y - 2*C.y));
+	
+		if(CurrentPos.x >= Buffer->Width || CurrentPos.y >= Buffer->Height){
+			continue;
+		}
+		if(CurrentPos.x < 0 || CurrentPos.y < 0){
+			continue;
+		}
+		int Index = (int)CurrentPos.x + (int)CurrentPos.y * Buffer->Width;
+		Pixels[Index] = ColorBGRA{255,0,0,255};
+	}
+}
 
 internal void SetBackgroundColor(IScreenBuffer *Buffer, ColorBGRA BackgroundColor){
 	ColorBGRA *CurrentPixel = *(ColorBGRA**)Buffer->Data;
@@ -98,16 +150,39 @@ internal void SetBackgroundColor(IScreenBuffer *Buffer, ColorBGRA BackgroundColo
 
 
 
-internal void RenderFrame(struct IScreenBuffer *Buffer, int XOffset){
+internal void RenderFrame(struct IScreenBuffer *Buffer, int XOffset, struct IInput *Input){
 	ASSERT(Buffer);
 	ColorBGRA *Pixels = *(ColorBGRA**)(Buffer->Data);
 	ASSERT(Pixels);
-	ColorBGRA BackgroundColor = {255,255,255,255};
+	ColorBGRA BackgroundColor = {255,255,255,0};
 	SetBackgroundColor(Buffer, BackgroundColor);
-	Pos2 V1 = {20,20};
-	Pos2 V2 = {50,400};
-	Pos2 V3 = {800,20};
-	NaiveRasterizeTri(Buffer,V1,V3,V2);
+	static Pos2 V1 = {100,100};
+	static Pos2 V2 = {100,500};
+	static Pos2 V3 = {500,500};
+	ColorBGRA ColorV1 = {0,0,255,255};
+	ColorBGRA ColorV2 = {0,255,0,255};
+	ColorBGRA ColorV3 = {0,255,255,255};
+
+	if(Input->LeftClick){
+		V1.x = Input->MouseX;
+		V1.y = Input->MouseY;
+	}
+	if(Input->RightClick){
+		V2.x = Input->MouseX;
+		V2.y = Input->MouseY;
+	}
+	if(Input->MiddleClick){
+		V3.x = Input->MouseX;
+		V3.y = Input->MouseY;
+	}
+
+	NaiveRasterizeTri(Buffer,V1,V2,V3);
+	RasterizeQuadraticBezierCurve(Buffer, V1, V2, V3);
+	RasterizePoint(Buffer, V1, ColorV1);
+	RasterizePoint(Buffer, V2, ColorV2);
+	RasterizePoint(Buffer, V3, ColorV3);
+	
+
 	
 	
 
