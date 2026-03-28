@@ -139,7 +139,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
       <ExceptionHandling>false</ExceptionHandling>
-      <CompileAs>CompileAsC</CompileAs>
+      <CompileAs>CompileAsCpp</CompileAs>
       <LanguageStandard_C>stdc11</LanguageStandard_C>
       <TreatWarningAsError>true</TreatWarningAsError>
       <DisableSpecificWarnings>4091;</DisableSpecificWarnings>
@@ -147,7 +147,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>User32.lib;D3D11.lib;dxgi.lib;dxguid.lib;d3dcompiler.lib;</AdditionalDependencies>
+      <AdditionalDependencies>User32.lib;Gdi32.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

@@ -11,25 +11,20 @@
 
 
 #include "Application.cpp"
-struct Win32ColorBGRA{
-	unsigned char B;
-	unsigned char G;
-	unsigned char R;
-	unsigned char A;
-};
+
 
 struct Win32FrameBuffer{
 	unsigned Width;
 	unsigned Height;
 	unsigned PixelSize;
-	Win32ColorBGRA **Pixels;
+	unsigned **Pixels;
 	BITMAPINFO BMPInfo;
 };
 
 struct Win32BackBuffer{
 	UINT Width;
 	UINT Height;
-	Win32ColorBGRA *Data;
+	unsigned *Data;
 	UINT Stride;
 	WORD PixelSize;
 };
@@ -45,6 +40,8 @@ struct Win32KeyDownState{
 	unsigned PreviousState : 1;
 	unsigned TransitionState : 1;
 };
+
+
 
 
 
@@ -77,7 +74,7 @@ internal void Win32ResizeFrameBuffer(struct Win32FrameBuffer *FrameBuffer, struc
 		}
 		BackBuffer->Width = NewWidth;
 		BackBuffer->Height = NewHeight;
-		BackBuffer->Data = (Win32ColorBGRA *)VirtualAlloc(NULL, BackBuffer->Width * BackBuffer->Height * BackBuffer->PixelSize, MEM_COMMIT, PAGE_READWRITE);
+		BackBuffer->Data = (unsigned *)VirtualAlloc(NULL, BackBuffer->Width * BackBuffer->Height * BackBuffer->PixelSize, MEM_COMMIT, PAGE_READWRITE);
 		ASSERT(BackBuffer->Data);
 	}
 
@@ -102,6 +99,15 @@ LRESULT Wndproc(HWND WindowHandle, UINT Message, WPARAM WParam, LPARAM LParam){
 		PostQuitMessage(0);
 		break;
 	}
+	case WM_KEYDOWN: {
+		unsigned long lParam = (unsigned long)LParam;
+		Win32KeyDownState State;
+		ASSERT(sizeof(State) == sizeof(lParam));
+		State = *(Win32KeyDownState *)&lParam;
+
+
+		printf("Callback:%u\n", State.ScanCode);
+	}break;
 	case WM_PAINT: {
 		printf("WM_PAINT\n");
 		PAINTSTRUCT PaintStruct;
@@ -140,6 +146,10 @@ internal void Win32ClearBackBuffer(struct Win32FrameBuffer *Buffer){
 #include "DebugWin32.cpp"
 int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
 {
+	long long PerfCountFrequency;
+	QueryPerformanceFrequency((LARGE_INTEGER *)&PerfCountFrequency);
+	
+
 	FILE* fp;
 	ASSERT(AllocConsole());
 	freopen_s(&fp, "CONIN$", "r", stdin);
@@ -199,8 +209,8 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 	Win32BackBuffer BackBuffer = {};
 	BackBuffer.Width  = CurrentRect.right - CurrentRect.left;
 	BackBuffer.Height = CurrentRect.bottom - CurrentRect.top;
-	BackBuffer.PixelSize = sizeof(Win32ColorBGRA);
-	BackBuffer.Data = (Win32ColorBGRA*)VirtualAlloc(NULL, BackBuffer.Width * BackBuffer.Height * BackBuffer.PixelSize, MEM_COMMIT, PAGE_READWRITE);
+	BackBuffer.PixelSize = sizeof(unsigned);
+	BackBuffer.Data = (unsigned*)VirtualAlloc(NULL, BackBuffer.Width * BackBuffer.Height * BackBuffer.PixelSize, MEM_COMMIT, PAGE_READWRITE);
 	BackBuffer.Stride = BackBuffer.Width * BackBuffer.PixelSize;
 	ASSERT(BackBuffer.Data);
 
@@ -222,7 +232,8 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 #endif
 
 	bool Running = 1;
-
+	long long Previous, Current;
+	QueryPerformanceCounter((LARGE_INTEGER *)&Previous);
 	while (Running) {
 		MSG CurrentMessage;
 		IInput Input = {};
@@ -247,8 +258,9 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 				
 				Input.MouseX = GET_X_LPARAM(LParam);
 				Input.MouseY = GET_Y_LPARAM(LParam);
-				printf("LeftClick: %d, MouseX: %hd, MouseY: %hd\n", Input.LeftClick, Input.MouseX, Input.MouseY);
+				//printf("LeftClick: %d, MouseX: %hd, MouseY: %hd\n", Input.LeftClick, Input.MouseX, Input.MouseY);
 			}break;
+			
 			case WM_QUIT: {
 				Running = 0;
 			}break;
@@ -266,18 +278,27 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 
 		static int Offset = 0;
 		Win32ClearBackBuffer(&GlobalFrameBuffer);
+
+		
 		RenderFrame((IScreenBuffer*) &GlobalFrameBuffer, Offset,&Input);
+		
+
+		
+
+
+
 		Offset++;
 		
 		Win32DisplayBuffer(WindowHandle, GlobalDeviceContext,&GlobalFrameBuffer);
 		
 
+		QueryPerformanceCounter((LARGE_INTEGER *)&Current);
+		float CounterElapsed = (float)(Current - Previous) / (float)PerfCountFrequency;
+		//printf("RenderFrame:%f us\n", CounterElapsed);
 		
 
-		
 
-
-		
+		Previous = Current;
 	}
 
 }
