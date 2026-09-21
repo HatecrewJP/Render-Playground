@@ -11,7 +11,7 @@ struct IScreenBuffer{
 	unsigned Height;
 	unsigned PixelSize;
 	unsigned unused;
-	void **Data;
+	unsigned *Data;
 };
 struct IInput{
 	short MouseX;

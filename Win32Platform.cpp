@@ -17,7 +17,7 @@ struct Win32FrameBuffer{
 	unsigned Width;
 	unsigned Height;
 	unsigned PixelSize;
-	unsigned **Pixels;
+	unsigned *Pixels;
 	BITMAPINFO BMPInfo;
 };
 
@@ -60,7 +60,7 @@ internal void Win32DisplayBuffer(HWND WindowHandle, HDC DeviceContext, Win32Fram
 	BITMAPINFO BMPInfo = Buffer->BMPInfo;
 	UINT BufferWidth = Buffer->Width;
 	UINT BufferHeight = Buffer->Height;
-	void *BufferData = *(Buffer->Pixels);
+	void *BufferData = Buffer->Pixels;
 	SetDIBitsToDevice(DeviceContext, 0, 0, BufferWidth, BufferHeight, 0, 0, 0, BufferHeight, BufferData, &BMPInfo, DIB_RGB_COLORS);
 }
 
@@ -71,6 +71,7 @@ internal void Win32ResizeFrameBuffer(struct Win32FrameBuffer *FrameBuffer, struc
 		if(BackBuffer->Data){
 			VirtualFree(BackBuffer->Data, 0, MEM_RELEASE);
 			BackBuffer->Data = NULL;
+
 		}
 		BackBuffer->Width = NewWidth;
 		BackBuffer->Height = NewHeight;
@@ -82,6 +83,7 @@ internal void Win32ResizeFrameBuffer(struct Win32FrameBuffer *FrameBuffer, struc
 	FrameBuffer->Height = NewHeight;
 	FrameBuffer->BMPInfo.bmiHeader.biWidth = FrameBuffer->Width;
 	FrameBuffer->BMPInfo.bmiHeader.biHeight = -(INT)FrameBuffer->Height;
+	FrameBuffer->Pixels = BackBuffer->Data;
 }
 
 LRESULT Wndproc(HWND WindowHandle, UINT Message, WPARAM WParam, LPARAM LParam){
@@ -134,9 +136,9 @@ LRESULT Wndproc(HWND WindowHandle, UINT Message, WPARAM WParam, LPARAM LParam){
 internal void Win32ClearBackBuffer(struct Win32FrameBuffer *Buffer){
 	ASSERT(Buffer);
 	ASSERT(Buffer->Pixels);
-	ASSERT(*(Buffer->Pixels))
+	ASSERT(Buffer->Pixels);
 
-	void *Data = *(Buffer->Pixels);
+	void *Data = Buffer->Pixels;
 	UINT Size = Buffer->Width * Buffer->Height * (UINT)Buffer->PixelSize;
 	memset(Data, 0, Size);
 }
@@ -144,6 +146,7 @@ internal void Win32ClearBackBuffer(struct Win32FrameBuffer *Buffer){
 
 
 #include "DebugWin32.cpp"
+
 int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
 {
 	long long PerfCountFrequency;
@@ -186,15 +189,16 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 		NULL);
 
 	GlobalDeviceContext = GetDC(WindowHandle);
+	struct DebugContext DebugCTX = {0};
+
 #ifdef DEBUG
-	DebugWindowHandle = WindowHandle;
-	DebugDeviceContext = GlobalDeviceContext;
+	DebugCTX.DebugDisplayBuffer = DebugDisplayBuffer;
+	DebugCTX.DebugWindowHandle = WindowHandle;
+	DebugCTX.DebugDeviceContext = GlobalDeviceContext;
 #endif
 	
 	if(!WindowHandle){
-#ifdef DEBUG
-		
-#endif 
+
 		exit(-1);
 	}
 	
@@ -225,10 +229,10 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 
 	GlobalFrameBuffer.Height = BackBuffer.Height;
 	GlobalFrameBuffer.Width = BackBuffer.Width;
-	GlobalFrameBuffer.Pixels = &BackBuffer.Data;
+	GlobalFrameBuffer.Pixels = BackBuffer.Data;
 
 #ifdef DEBUG
-	DebugFrameBuffer = &GlobalFrameBuffer;
+	DebugCTX.DebugFrameBuffer = &GlobalFrameBuffer;
 #endif
 
 	bool Running = 1;
@@ -280,7 +284,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 		Win32ClearBackBuffer(&GlobalFrameBuffer);
 
 		
-		RenderFrame((IScreenBuffer*) &GlobalFrameBuffer, Offset,&Input);
+		RenderFrame(&DebugCTX,(IScreenBuffer*) &GlobalFrameBuffer, Offset,&Input);
 		
 
 		

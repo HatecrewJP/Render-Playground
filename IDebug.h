@@ -2,6 +2,12 @@
 
 #pragma once
 #if DEBUG
-void DebugDisplayBuffer();
+
+struct DebugContext{
+	void(*DebugDisplayBuffer)(struct DebugContext*);
+	HWND DebugWindowHandle;
+	HDC DebugDeviceContext;
+	struct Win32FrameBuffer *DebugFrameBuffer;
+};
 
 #endif

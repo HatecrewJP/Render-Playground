@@ -44,7 +44,7 @@ internal Vec2 NormalizeVec2(Vec2 v){
 
 internal void NaiveRasterizeLine(IScreenBuffer *Buffer, Pos2 Start, Pos2 End){
 	ASSERT(Buffer);
-	unsigned *Pixels = *(unsigned **)Buffer->Data;
+	unsigned *Pixels = Buffer->Data;
 	ASSERT(Pixels);
 
 
@@ -85,7 +85,7 @@ internal void NaiveRasterizeTri(IScreenBuffer *Buffer, Pos2 VL, Pos2 VX, Pos2 VR
 
 }
 internal void RasterizePoint(IScreenBuffer *Buffer, Pos2 P, unsigned Color){
-	unsigned *Pixels = *(unsigned **)Buffer->Data;
+	unsigned *Pixels = Buffer->Data;
 	Pos2 CurrentPos;
 	CurrentPos.x = (float)RoundFloat(P.x);
 	CurrentPos.y = (float)RoundFloat(P.y);
@@ -98,7 +98,7 @@ internal void RasterizePoint(IScreenBuffer *Buffer, Pos2 P, unsigned Color){
 internal void NaiveRasterizeCircle(IScreenBuffer *Buffer, Pos2 Center, float Radius){
 	ASSERT(Buffer);
 	float Resolution = 0.0001f;
-	unsigned *Pixels = *(unsigned **)Buffer->Data;
+	unsigned *Pixels = Buffer->Data;
 
 	for(float a = 0; a < 2 * PI; a += Resolution){
 		Pos2 CurrentPos;
@@ -123,7 +123,7 @@ internal void NaiveRasterizeCircle(IScreenBuffer *Buffer, Pos2 Center, float Rad
 
 
 internal void NaiveRasterizeQuadraticBezierCurve(IScreenBuffer *Buffer, Pos2 S, Pos2 E, Pos2 C){
-	unsigned *Pixels = *(unsigned **)Buffer->Data;
+	unsigned *Pixels = Buffer->Data;
 	float Resolution = 0.0001f;
 	for(float t = 0; t <= 1; t += Resolution){
 		Pos2 CurrentPos;
@@ -145,7 +145,7 @@ internal void NaiveRasterizeQuadraticBezierCurve(IScreenBuffer *Buffer, Pos2 S, 
 
 
 internal void NaiveRasterizeCubicBezierCurve(IScreenBuffer *Buffer, Pos2 P0, Pos2 P1, Pos2 P2, Pos2 P3){
-	unsigned *Pixels = *(unsigned **)Buffer->Data;
+	unsigned *Pixels = Buffer->Data;
 	float Resolution = 0.0001f;
 	for(float t = 0; t <= 1; t += Resolution){
 		Pos2 CurrentPos;
@@ -182,7 +182,7 @@ internal void NaiveDrawRectangle(IScreenBuffer *Buffer, float Left, float Top, f
 	if(MaxY >= (unsigned)Buffer->Height){
 		MaxY = (unsigned)Buffer->Height;
 	}
-	unsigned *Row = *(unsigned **)Buffer->Data + MinX + MinY * Buffer->Width * Buffer->PixelSize;
+	unsigned *Row = Buffer->Data + MinX + MinY * Buffer->Width * Buffer->PixelSize;
 	
 	for(unsigned Y = MinY; Y < MaxY; Y++){
 		unsigned *Pixels = Row;
@@ -196,7 +196,7 @@ internal void NaiveDrawRectangle(IScreenBuffer *Buffer, float Left, float Top, f
 
 
 internal void SetBackgroundColor(IScreenBuffer *Buffer, unsigned BackgroundColor){
-	unsigned *CurrentPixel = *(unsigned **)Buffer->Data;
+	unsigned *CurrentPixel = Buffer->Data;
 	for(int Col = 0; Col < (int)Buffer->Width; Col++){
 		for(int Row = 0; Row < (int)Buffer->Height; Row++){
 			*CurrentPixel = BackgroundColor;
@@ -206,9 +206,12 @@ internal void SetBackgroundColor(IScreenBuffer *Buffer, unsigned BackgroundColor
 }
 
 
-internal void RenderFrame(struct IScreenBuffer *Buffer, int XOffset, struct IInput *Input){
+internal void RenderFrame(struct DebugContext *DebugCTX,struct IScreenBuffer *Buffer, 
+	int XOffset, 
+	struct IInput *Input
+	){
 	ASSERT(Buffer);
-	unsigned *Pixels = *(unsigned **)(Buffer->Data);
+	unsigned *Pixels = Buffer->Data;
 	ASSERT(Pixels);
 	unsigned BackgroundColor = 0xFFFFFF;
 	SetBackgroundColor(Buffer, BackgroundColor);
@@ -216,7 +219,6 @@ internal void RenderFrame(struct IScreenBuffer *Buffer, int XOffset, struct IInp
 	static Pos2 V2 = {100,500};
 	static Pos2 V3 = {500,500};
 	static Pos2 V4 = {500,100};
-	
 
 	if(Input->LeftClick){
 		V1.x = Input->MouseX;
@@ -231,7 +233,7 @@ internal void RenderFrame(struct IScreenBuffer *Buffer, int XOffset, struct IInp
 		V3.y = Input->MouseY;
 	}
 
-	NaiveDrawRectangle(Buffer, 200, 40, 600, 700);
+	
 
 	NaiveRasterizeLine(Buffer, V1, V2);
 	NaiveRasterizeLine(Buffer, V2, V3);

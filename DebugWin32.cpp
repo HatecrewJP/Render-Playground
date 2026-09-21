@@ -1,15 +1,12 @@
 #pragma once
 #ifdef DEBUG
-global HWND DebugWindowHandle;
-global HDC DebugDeviceContext;
-global Win32FrameBuffer *DebugFrameBuffer;
+#include "IDebug.h"
 
 
-	
-
-
-internal void DebugDisplayBuffer(){
-	Win32DisplayBuffer(DebugWindowHandle, DebugDeviceContext, DebugFrameBuffer);
+internal void DebugDisplayBuffer(DebugContext *CTX){
+	Win32DisplayBuffer(CTX->DebugWindowHandle, 
+		CTX->DebugDeviceContext, 
+		CTX->DebugFrameBuffer);
 }
 
 
