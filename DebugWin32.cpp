@@ -3,7 +3,7 @@
 #include "IDebug.h"
 
 
-internal void DebugDisplayBuffer(DebugContext *CTX){
+internal void DebugDisplayBuffer(IDebugContext *CTX){
 	Win32DisplayBuffer(CTX->DebugWindowHandle, 
 		CTX->DebugDeviceContext, 
 		CTX->DebugFrameBuffer);

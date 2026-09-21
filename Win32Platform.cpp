@@ -145,8 +145,9 @@ internal void Win32ClearBackBuffer(struct Win32FrameBuffer *Buffer){
 
 
 
-#include "DebugWin32.cpp"
-
+#ifdef DEBUG
+	#include "DebugWin32.cpp"
+#endif
 int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
 {
 	long long PerfCountFrequency;
@@ -189,7 +190,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 		NULL);
 
 	GlobalDeviceContext = GetDC(WindowHandle);
-	struct DebugContext DebugCTX = {0};
+	struct IDebugContext DebugCTX = {0};
 
 #ifdef DEBUG
 	DebugCTX.DebugDisplayBuffer = DebugDisplayBuffer;

@@ -21,14 +21,14 @@ struct Vec2{
 
 
 
-internal float RoundFloat(float In){
+internal inline float RoundFloat(float In){
 	return (float)((int)(In + 0.5f));
 }
-internal unsigned RoundFloatToUInt(float In){
+internal inline unsigned RoundFloatToUInt(float In){
 	return ((unsigned)(In + 0.5f));
 }
 
-internal float DistVec2(Vec2 a, Vec2 b){
+internal inline float DistVec2(Vec2 a, Vec2 b){
 	return (float)sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y));
 }
 internal Vec2 NormalizeVec2(Vec2 v){
@@ -206,7 +206,7 @@ internal void SetBackgroundColor(IScreenBuffer *Buffer, unsigned BackgroundColor
 }
 
 
-internal void RenderFrame(struct DebugContext *DebugCTX,struct IScreenBuffer *Buffer, 
+internal void RenderFrame(struct IDebugContext *DebugCTX,struct IScreenBuffer *Buffer, 
 	int XOffset, 
 	struct IInput *Input
 	){

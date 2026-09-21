@@ -3,8 +3,8 @@
 #pragma once
 #if DEBUG
 
-struct DebugContext{
-	void(*DebugDisplayBuffer)(struct DebugContext*);
+struct IDebugContext{
+	void(*DebugDisplayBuffer)(struct IDebugContext*);
 	HWND DebugWindowHandle;
 	HDC DebugDeviceContext;
 	struct Win32FrameBuffer *DebugFrameBuffer;
