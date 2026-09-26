@@ -7,10 +7,10 @@ typedef unsigned char byte;
 struct IScreenBuffer{
 	//CAREFUL WHEN CHANGING:
 	//Type Punning when passing to Application
-	unsigned Width;
-	unsigned Height;
-	unsigned PixelSize;
-	unsigned unused;
+	int Width;
+	int Height;
+	int PixelSize;
+	int unused;
 	unsigned *Data;
 };
 struct IInput{

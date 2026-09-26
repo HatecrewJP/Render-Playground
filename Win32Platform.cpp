@@ -192,6 +192,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 	GlobalDeviceContext = GetDC(WindowHandle);
 	struct IDebugContext DebugCTX = {0};
 
+	
 #ifdef DEBUG
 	DebugCTX.DebugDisplayBuffer = DebugDisplayBuffer;
 	DebugCTX.DebugWindowHandle = WindowHandle;
@@ -263,7 +264,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 				
 				Input.MouseX = GET_X_LPARAM(LParam);
 				Input.MouseY = GET_Y_LPARAM(LParam);
-				//printf("LeftClick: %d, MouseX: %hd, MouseY: %hd\n", Input.LeftClick, Input.MouseX, Input.MouseY);
+				printf("LeftClick: %d, MouseX: %hd, MouseY: %hd\n", Input.LeftClick, Input.MouseX, Input.MouseY);
 			}break;
 			
 			case WM_QUIT: {
@@ -286,11 +287,6 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 
 		
 		RenderFrame(&DebugCTX,(IScreenBuffer*) &GlobalFrameBuffer, Offset,&Input);
-		
-
-		
-
-
 
 		Offset++;
 		
