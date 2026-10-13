@@ -2,6 +2,7 @@
 
 #pragma once
 #if DEBUG
+#include "windows.h"
 
 struct IDebugContext{
 	void(*DebugDisplayBuffer)(struct IDebugContext*);

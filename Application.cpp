@@ -19,6 +19,11 @@ struct Vec2{
 	float y;
 };
 
+internal inline int Abs32(int n) {
+	ASSERT(sizeof(int) == 4);
+	
+	return (n + (n >> 31)) ^ (n >> 31);
+}
 
 
 
@@ -76,12 +81,7 @@ internal void NaiveRasterizeLine(IScreenBuffer *Buffer, Pos2 Start, Pos2 End){
 
 		int Index = (int)CurrentPos.x + (int)CurrentPos.y * Buffer->Width;
 		Pixels[Index] = 0x000000;
-
 	}
-
-
-
-
 }
 internal void NaiveDrawRectangle(IScreenBuffer *Buffer, float Left, float Top, float Right, float Bottom){
 	unsigned MinX = RoundFloatToUInt(Left);
@@ -89,6 +89,7 @@ internal void NaiveDrawRectangle(IScreenBuffer *Buffer, float Left, float Top, f
 	unsigned MaxX = RoundFloatToUInt(Right);
 	unsigned MaxY = RoundFloatToUInt(Bottom);
 
+	
 	if(MinX < 0){
 		MinX = 0;
 	}
@@ -140,7 +141,7 @@ internal inline int TriOrientation(Pos2 A, Pos2 B, Pos2 C){
 }
 
 internal int TestTopLeftRule(Pos2 A, Pos2 B){
-	int Horizontal = A.x == B.x;
+	int Horizontal = A.y == B.y;
 	int DirLeft = (B.x - A.x) < 0;
 	int TopEdge = Horizontal && DirLeft;
 	int DownEdge = (B.y - A.y) < 0;
@@ -150,8 +151,6 @@ internal int TestTopLeftRule(Pos2 A, Pos2 B){
 }
 
 internal void DrawTri(IScreenBuffer *Buffer, Pos2 A, Pos2 B, Pos2 C, unsigned Color){
-	
-	
 	int Orientation = TriOrientation(A,B,C);
 	// Orientation < 0: Clockwise Orientation
 	// Orientation == 0: Triangle with Area 0
@@ -178,16 +177,16 @@ internal void DrawTri(IScreenBuffer *Buffer, Pos2 A, Pos2 B, Pos2 C, unsigned Co
 	if(MaxY > Buffer->Height){
 		MaxY = Buffer->Height;
 	}
-
+	int Bias0 = TestTopLeftRule(A, B) ? 0 : -1;
+	int Bias1 = TestTopLeftRule(C, A) ? 0 : -1;
+	int Bias2 = TestTopLeftRule(B, C) ? 0 : -1;
 
 	unsigned *Pixels = Buffer->Data + MinX + MinY * Buffer->Width;
 	for(int Y = MinY; Y < MaxY; Y++){
 		for(int X = MinX; X < MaxX; X++){
 			int InsideTri[3];
 			Pos2 P = {(float)X,(float)Y};
-			int Bias0 = TestTopLeftRule(A, B) ? 0 : -1;
-			int Bias1 = TestTopLeftRule(C, A) ? 0 : -1;
-			int Bias2 = TestTopLeftRule(B, C) ? 0 : -1;
+			
 			InsideTri[0] = (TriOrientation(A, B, P) + Bias0)>=0;
 			InsideTri[1] = (TriOrientation(A, P, C) + Bias1)>=0;
 			InsideTri[2] = (TriOrientation(B, C, P) + Bias2)>=0;
@@ -204,7 +203,75 @@ internal void DrawTri(IScreenBuffer *Buffer, Pos2 A, Pos2 B, Pos2 C, unsigned Co
 	}
 }
 
-internal void RasterizePoint(IScreenBuffer *Buffer, Pos2 P, unsigned Color){
+internal void BresenhamLine(IScreenBuffer* Buffer, Pos2 A, Pos2 B, unsigned Color) {
+	ASSERT(Buffer);
+	int SlopeX = (int)B.x - (int)A.x;
+	int SlopeY = (int)B.y - (int)A.y;
+	unsigned* Pixels;
+	
+	if(Abs32(SlopeX) >= Abs32(SlopeY)){
+		//x-major lines
+		int MinX = (A.x <= B.x) ? (int)A.x : (int)B.x;
+		int MinY = (A.x <= B.x) ? (int)A.y : (int)B.y;
+		int MaxX = (A.x <= B.x) ? (int)B.x : (int)A.x;
+		int MaxY = (A.x <= B.x) ? (int)B.y : (int)A.y;
+
+		int dX = (MaxX - MinX);
+		int dY = (MaxY - MinY);
+		
+		int YInc = (dY < 0) ? -1 : 1;
+		dY = (dY < 0) ? -dY : dY;
+
+		int dInc1 = 2 * dY;
+		int dInc2 = 2 *(dY - dX);
+		int D = (2 * dY) - dX;
+
+		Pixels = Buffer->Data + Buffer->Width * MinY + MinX;
+		int Pitch = Buffer->Width * YInc;
+		int inc = 0;
+		for (int X = MinX; X < MaxX; X++) {
+			*Pixels = Color;
+			inc = (D > 0) ? (Pitch + 1) : 1;
+			D += (D > 0) ? dInc2 : dInc1;
+			Pixels += inc;
+		}
+	}
+	else {
+		int MinX = (A.y <= B.y) ? (int)A.x : (int)B.x;
+		int MinY = (A.y <= B.y) ? (int)A.y : (int)B.y;
+		int MaxX = (A.y <= B.y) ? (int)B.x : (int)A.x;
+		int MaxY = (A.y <= B.y) ? (int)B.y : (int)A.y;
+		
+		int dX = (MaxX - MinX);
+		int dY = (MaxY - MinY);
+
+		int XInc = (dX < 0) ? -1 : 1;
+		dX = (dX < 0) ? -dX : dX;
+
+		int dInc1 =  2 * (- dX);
+		int dInc2 = 2 * (dY - dX);
+		int D = (2 * dY) - dX;
+
+		Pixels = Buffer->Data + Buffer->Width * MinY + MinX;
+		int Pitch = Buffer->Width;
+		int inc = 0;
+		for (int Y = MinY; Y < MaxY; Y++) {
+			*Pixels = Color;
+			//printf("%d", D < 0 ? 1 : 0);
+			inc = (D < 0) ? (Pitch + XInc) : Pitch;
+			D += (D < 0) ? dInc2 : dInc1;
+			Pixels += inc;
+		}
+
+	}
+
+	
+	
+
+}
+
+
+internal void NaiveRasterizePoint(IScreenBuffer *Buffer, Pos2 P, unsigned Color){
 	unsigned *Pixels = Buffer->Data;
 	Pos2 CurrentPos;
 	CurrentPos.x = (float)RoundFloat(P.x);
@@ -213,6 +280,10 @@ internal void RasterizePoint(IScreenBuffer *Buffer, Pos2 P, unsigned Color){
 	Pixels[Index] = Color;
 }
 
+internal void RasterizePoint(IScreenBuffer* Buffer, Pos2 P, unsigned Color) {
+
+	
+}
 
 
 internal void NaiveRasterizeCircle(IScreenBuffer *Buffer, Pos2 Center, float Radius){
@@ -245,6 +316,7 @@ internal void NaiveRasterizeCircle(IScreenBuffer *Buffer, Pos2 Center, float Rad
 internal void NaiveRasterizeQuadraticBezierCurve(IScreenBuffer *Buffer, Pos2 S, Pos2 E, Pos2 C){
 	unsigned *Pixels = Buffer->Data;
 	float Resolution = 0.0001f;
+	
 	for(float t = 0; t <= 1; t += Resolution){
 		Pos2 CurrentPos;
 		CurrentPos.x = RoundFloat((1 - t) * (1 - t) * S.x + 2 * (1 - t) * t * C.x + t * t * E.x);
@@ -297,7 +369,7 @@ internal void SetBackgroundColor(IScreenBuffer *Buffer, unsigned BackgroundColor
 }
 
 
-internal void RenderFrame(struct IDebugContext *DebugCTX,struct IScreenBuffer *Buffer, 
+void RenderFrame(struct IDebugContext *DebugCTX,struct IScreenBuffer *Buffer, 
 	int XOffset, 
 	struct IInput *Input
 	){
@@ -311,6 +383,9 @@ internal void RenderFrame(struct IDebugContext *DebugCTX,struct IScreenBuffer *B
 	static Pos2 V2 = {100,500};
 	static Pos2 V3 = {500,500};
 	static Pos2 V4 = {500,100};
+
+	int& Test = XOffset;
+	Test = 5;
 
 	if(Input->LeftClick){
 		V1.x = Input->MouseX;
@@ -326,23 +401,22 @@ internal void RenderFrame(struct IDebugContext *DebugCTX,struct IScreenBuffer *B
 	}
 
 	
-
-	NaiveRasterizeLine(Buffer, V1, V2);
-	NaiveRasterizeLine(Buffer, V2, V3);
-	NaiveRasterizeLine(Buffer, V3, V4);
-	NaiveRasterizeCubicBezierCurve(Buffer, V1, V2, V3, V4);
-
-
-	NaiveRasterizeCircle(Buffer, V1, 2.0f);
-	NaiveRasterizeCircle(Buffer, V2, 2.0f);
-	NaiveRasterizeCircle(Buffer, V3, 2.0f);
-	NaiveRasterizeCircle(Buffer, V4, 2.0f);
-
-
 	DrawTri(Buffer, V1, V2, V4, 0xffff00ff);
 	DrawTri(Buffer, V1, V2, V3, 0xff00ffff);
-	
 
+	//NaiveRasterizeLine(Buffer, V2, V3);
+	//NaiveRasterizeLine(Buffer, V3, V4);
+	//NaiveRasterizeCubicBezierCurve(Buffer, V1, V2, V3, V4);
+	//
+	//
+	//NaiveRasterizeCircle(Buffer, V1, 2.0f);
+	//NaiveRasterizeCircle(Buffer, V2, 2.0f);
+	//NaiveRasterizeCircle(Buffer, V3, 2.0f);
+	//NaiveRasterizeCircle(Buffer, V4, 2.0f);
+
+
+	BresenhamLine(Buffer, V1, V2, 0xffff0000);
+	//NaiveRasterizeLine(Buffer, V1, V2);
 
 
 

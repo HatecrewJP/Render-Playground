@@ -9,7 +9,6 @@
 #define ArrayCount(x) (sizeof(x)/sizeof((x)[0]))
 #define ToBit(x) ((x)*8)
 
-
 #include "Application.cpp"
 
 
@@ -108,10 +107,10 @@ LRESULT Wndproc(HWND WindowHandle, UINT Message, WPARAM WParam, LPARAM LParam){
 		State = *(Win32KeyDownState *)&lParam;
 
 
-		printf("Callback:%u\n", State.ScanCode);
+		//printf("Callback:%u\n", State.ScanCode);
 	}break;
 	case WM_PAINT: {
-		printf("WM_PAINT\n");
+		//printf("WM_PAINT\n");
 		PAINTSTRUCT PaintStruct;
 		HDC DeviceContext = BeginPaint(WindowHandle, &PaintStruct);
 		Win32DisplayBuffer(WindowHandle, DeviceContext,&GlobalFrameBuffer);
@@ -143,7 +142,9 @@ internal void Win32ClearBackBuffer(struct Win32FrameBuffer *Buffer){
 	memset(Data, 0, Size);
 }
 
+internal void ReloadDLL(char *DLLPath) {
 
+}
 
 #ifdef DEBUG
 	#include "DebugWin32.cpp"
@@ -153,6 +154,11 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 	long long PerfCountFrequency;
 	QueryPerformanceFrequency((LARGE_INTEGER *)&PerfCountFrequency);
 	
+	/*HMODULE DLL = LoadLibraryA("app.dll");
+	ASSERT(DLL);
+
+	RenderFrameProc RenderFrame = (RenderFrameProc)GetProcAddress(DLL, "RenderFrame");
+	ASSERT(RenderFrame);*/
 
 	FILE* fp;
 	ASSERT(AllocConsole());
@@ -255,7 +261,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 				ASSERT(sizeof(State) == sizeof(LParam));
 				State = *(Win32KeyDownState *)&LParam;
 
-				printf("%u\n", State.ScanCode);
+				//printf("%u\n", State.ScanCode);
 			}break;
 			case WM_MOUSEMOVE: {
 				Input.LeftClick	  = (WParam & MK_LBUTTON) != 0;
@@ -264,7 +270,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 				
 				Input.MouseX = GET_X_LPARAM(LParam);
 				Input.MouseY = GET_Y_LPARAM(LParam);
-				printf("LeftClick: %d, MouseX: %hd, MouseY: %hd\n", Input.LeftClick, Input.MouseX, Input.MouseY);
+				//printf("LeftClick: %d, MouseX: %hd, MouseY: %hd\n", Input.LeftClick, Input.MouseX, Input.MouseY);
 			}break;
 			
 			case WM_QUIT: {

@@ -4,6 +4,8 @@
 #define ASSERT(x) if(!(x)) __debugbreak();
 typedef unsigned char byte;
 
+typedef void(*RenderFrameProc)(struct IDebugContext*, struct IScreenBuffer*, int, struct IInput*) ; 
+
 struct IScreenBuffer{
 	//CAREFUL WHEN CHANGING:
 	//Type Punning when passing to Application
