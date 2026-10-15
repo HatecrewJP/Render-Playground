@@ -105,17 +105,7 @@ LRESULT Wndproc(HWND WindowHandle, UINT Message, WPARAM WParam, LPARAM LParam){
 		PostQuitMessage(0);
 		break;
 	}
-	case WM_KEYDOWN: {
-		unsigned long lParam = (unsigned long)LParam;
-		Win32KeyDownState State;
-		ASSERT(sizeof(State) == sizeof(lParam));
-		State = *(Win32KeyDownState *)&lParam;
-
-
-		//printf("Callback:%u\n", State.ScanCode);
-	}break;
 	case WM_PAINT: {
-		//printf("WM_PAINT\n");
 		PAINTSTRUCT PaintStruct;
 		HDC DeviceContext = BeginPaint(WindowHandle, &PaintStruct);
 		Win32DisplayBuffer(WindowHandle, DeviceContext,&GlobalFrameBuffer);
@@ -161,7 +151,7 @@ internal void ReloadDLL(char *DLLPath, char *DLLName, HMODULE *DLL, render_frame
 	ASSERT(NewFileTime > *FileTime);
 
 	int i = 0; 
-	//File might still be locked. Try 1000 times or crash
+	//DLL might still be locked by linker. Try 1000 times or crash
 	while(!CopyFileA(DLLPath, "x64/Debug/tmp_Application.dll", 0)){
 		i++;
 		if(i > 1000){
@@ -228,13 +218,8 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 		NULL);
 
 	GlobalDeviceContext = GetDC(WindowHandle);
-	
 
-	
-
-	
 	if(!WindowHandle){
-
 		exit(-1);
 	}
 	
@@ -300,7 +285,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 				ASSERT(sizeof(State) == sizeof(LParam));
 				State = *(Win32KeyDownState *)&LParam;
 
-				//printf("%u\n", State.ScanCode);
+				printf("%u\n", State.ScanCode);
 			}break;
 			case WM_MOUSEMOVE: {
 				Input.LeftClick	  = (WParam & MK_LBUTTON) != 0;
@@ -339,8 +324,10 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 		
 
 		QueryPerformanceCounter((LARGE_INTEGER *)&Current);
-		float CounterElapsed = (float)(Current - Previous) / (float)PerfCountFrequency;
-		//printf("RenderFrame:%f us\n", CounterElapsed);
+		long long TicksElapsed = Current - Previous;
+		//Convert To milliseconds
+		float CounterElapsed = (float)(TicksElapsed * 1000) / (float)PerfCountFrequency;
+		printf("RenderFrame:%f ms\n", CounterElapsed);
 		
 
 
