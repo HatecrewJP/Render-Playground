@@ -328,9 +328,6 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 		//Convert To milliseconds
 		float CounterElapsed = (float)(TicksElapsed * 1000) / (float)PerfCountFrequency;
 		printf("RenderFrame:%f ms\n", CounterElapsed);
-		
-
-
 		Previous = Current;
 	}
 
