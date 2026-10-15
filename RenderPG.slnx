@@ -3,5 +3,9 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
+  <Project Path="Application.vcxproj" Id="b1475c15-dc5e-4ade-be6e-ce00dfce9b49" />
+  <Project Path="Files.vcxproj" Id="4a5ca759-01f2-40a0-91e6-8df636b5ddca">
+    <Platform Project="x64" />
+  </Project>
   <Project Path="RenderPG.vcxproj" Id="82183a3d-1259-4583-b8b9-24db4f41acf5" />
 </Solution>

@@ -2,13 +2,8 @@
 
 #pragma once
 #if DEBUG
-#include "windows.h"
 
 struct IDebugContext{
-	void(*DebugDisplayBuffer)(struct IDebugContext*);
-	HWND DebugWindowHandle;
-	HDC DebugDeviceContext;
-	struct Win32FrameBuffer *DebugFrameBuffer;
+	void(*DebugDisplayBuffer)(IScreenBuffer *Buffer);
 };
-
 #endif

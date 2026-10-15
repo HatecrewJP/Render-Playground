@@ -1,15 +1,18 @@
+#define DEBUG 1
 #include "Ix64.h"
 
 #include "windowsx.h"
 #include <windows.h>
 #include <stdio.h>
 #include <math.h>
+#include "IDebug.h"
+
 
 
 #define ArrayCount(x) (sizeof(x)/sizeof((x)[0]))
 #define ToBit(x) ((x)*8)
 
-#include "Application.cpp"
+//#include "Application.cpp"
 
 
 struct Win32FrameBuffer{
@@ -27,8 +30,6 @@ struct Win32BackBuffer{
 	UINT Stride;
 	WORD PixelSize;
 };
-global HDC GlobalDeviceContext = NULL;
-global bool NeedsResize = 0;
 
 struct Win32KeyDownState{
 	unsigned RepeatCount : 16;
@@ -43,8 +44,12 @@ struct Win32KeyDownState{
 
 
 
+global HDC GlobalDeviceContext = NULL;
+global bool NeedsResize = 0;
 
-Win32FrameBuffer GlobalFrameBuffer;
+global Win32FrameBuffer GlobalFrameBuffer;
+
+
 
 internal void Win32DisplayBuffer(HWND WindowHandle, HDC DeviceContext, Win32FrameBuffer *Buffer){
 	ASSERT(WindowHandle);
@@ -128,10 +133,6 @@ LRESULT Wndproc(HWND WindowHandle, UINT Message, WPARAM WParam, LPARAM LParam){
 	return Result;
 }
 
-
-
-
-
 internal void Win32ClearBackBuffer(struct Win32FrameBuffer *Buffer){
 	ASSERT(Buffer);
 	ASSERT(Buffer->Pixels);
@@ -142,8 +143,38 @@ internal void Win32ClearBackBuffer(struct Win32FrameBuffer *Buffer){
 	memset(Data, 0, Size);
 }
 
-internal void ReloadDLL(char *DLLPath) {
+internal unsigned long long GetLastFileWriteTime(char *Path){
+	WIN32_FILE_ATTRIBUTE_DATA FileData = {0};
+	if(GetFileAttributesExA(Path, GetFileExInfoStandard, &FileData)){
+		return ((unsigned long long)FileData.ftLastWriteTime.dwHighDateTime) << 32 | ((unsigned long long)FileData.ftLastWriteTime.dwLowDateTime);
+	}
+	return 0;
+}
 
+
+
+internal void ReloadDLL(char *DLLPath, char *DLLName, HMODULE *DLL, render_frame** proc, unsigned long long *FileTime) {
+	if(*DLL){
+		ASSERT(FreeLibrary(*DLL));
+	}
+	unsigned long long NewFileTime = GetLastFileWriteTime(DLLPath);
+	ASSERT(NewFileTime > *FileTime);
+
+	int i = 0; 
+	//File might still be locked. Try 1000 times or crash
+	while(!CopyFileA(DLLPath, "x64/Debug/tmp_Application.dll", 0)){
+		i++;
+		if(i > 1000){
+			DWORD Error = GetLastError();
+			ASSERT(0);
+		}
+	}
+
+	*DLL = LoadLibraryA("tmp_Application.dll");
+	ASSERT(DLL);
+	*proc = (render_frame *)GetProcAddress(*DLL, "RenderFrame");
+	ASSERT(*proc);
+	*FileTime = NewFileTime;
 }
 
 #ifdef DEBUG
@@ -154,11 +185,12 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 	long long PerfCountFrequency;
 	QueryPerformanceFrequency((LARGE_INTEGER *)&PerfCountFrequency);
 	
-	/*HMODULE DLL = LoadLibraryA("app.dll");
-	ASSERT(DLL);
 
-	RenderFrameProc RenderFrame = (RenderFrameProc)GetProcAddress(DLL, "RenderFrame");
-	ASSERT(RenderFrame);*/
+	HMODULE DLL = 0;
+	char *DLLPath = (char *)"x64/Debug/Application.dll";
+	render_frame *RenderFrame = 0;
+	unsigned long long DLLWriteTime = 0;
+	ReloadDLL(DLLPath, (char *)"Application.dll", &DLL, &RenderFrame, &DLLWriteTime);
 
 	FILE* fp;
 	ASSERT(AllocConsole());
@@ -196,14 +228,10 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 		NULL);
 
 	GlobalDeviceContext = GetDC(WindowHandle);
-	struct IDebugContext DebugCTX = {0};
+	
 
 	
-#ifdef DEBUG
-	DebugCTX.DebugDisplayBuffer = DebugDisplayBuffer;
-	DebugCTX.DebugWindowHandle = WindowHandle;
-	DebugCTX.DebugDeviceContext = GlobalDeviceContext;
-#endif
+
 	
 	if(!WindowHandle){
 
@@ -240,13 +268,24 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 	GlobalFrameBuffer.Pixels = BackBuffer.Data;
 
 #ifdef DEBUG
-	DebugCTX.DebugFrameBuffer = &GlobalFrameBuffer;
+	GlobalDebugCTX.DebugWindowHandle = WindowHandle;
+	GlobalDebugCTX.DebugDeviceContext = GlobalDeviceContext;
+	GlobalDebugCTX.DebugFrameBuffer = &GlobalFrameBuffer;
+
+	IDebugContext AppDebugCTX = {0};
+	AppDebugCTX.DebugDisplayBuffer = DebugDisplayBuffer;
 #endif
 
 	bool Running = 1;
 	long long Previous, Current;
 	QueryPerformanceCounter((LARGE_INTEGER *)&Previous);
 	while (Running) {
+
+		if(DLLWriteTime != GetLastFileWriteTime(DLLPath)){
+			ReloadDLL(DLLPath,(char*)"Application.dll",&DLL,&RenderFrame,&DLLWriteTime);
+		}
+
+
 		MSG CurrentMessage;
 		IInput Input = {};
 		while (PeekMessageA(&CurrentMessage, 0, 0, 0, PM_REMOVE)) {
@@ -292,7 +331,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 		Win32ClearBackBuffer(&GlobalFrameBuffer);
 
 		
-		RenderFrame(&DebugCTX,(IScreenBuffer*) &GlobalFrameBuffer, Offset,&Input);
+		RenderFrame(&AppDebugCTX,(IScreenBuffer*) &GlobalFrameBuffer, Offset,&Input);
 
 		Offset++;
 		
