@@ -187,6 +187,8 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 	freopen_s(&fp, "CONIN$", "r", stdin);
 	freopen_s(&fp, "CONOUT$", "w", stdout);
 	freopen_s(&fp, "CONOUT$", "w", stderr);
+	
+
 
 	WNDCLASSA WindowClass;
 	WindowClass.style = CS_HREDRAW | CS_OWNDC | CS_VREDRAW;
@@ -261,6 +263,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 	AppDebugCTX.DebugDisplayBuffer = DebugDisplayBuffer;
 #endif
 
+	bool PrintFrameTime;
 	bool Running = 1;
 	long long Previous, Current;
 	QueryPerformanceCounter((LARGE_INTEGER *)&Previous);
@@ -314,9 +317,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 
 		static int Offset = 0;
 		Win32ClearBackBuffer(&GlobalFrameBuffer);
-
-		
-		RenderFrame(&AppDebugCTX,(IScreenBuffer*) &GlobalFrameBuffer, Offset,&Input);
+		RenderFrame(&AppDebugCTX,(IScreenBuffer*) &GlobalFrameBuffer, Offset,&Input,&PrintFrameTime);
 
 		Offset++;
 		
@@ -327,7 +328,11 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 		long long TicksElapsed = Current - Previous;
 		//Convert To milliseconds
 		float CounterElapsed = (float)(TicksElapsed * 1000) / (float)PerfCountFrequency;
-		printf("RenderFrame:%f ms\n", CounterElapsed);
+		
+		if(PrintFrameTime){
+			printf("RenderFrame:%f ms\n", CounterElapsed);
+
+		}
 		Previous = Current;
 	}
 

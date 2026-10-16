@@ -3,6 +3,7 @@
 
 #include "IDebug.h"
 
+
 struct DebugContext{
 	HWND DebugWindowHandle;
 	HDC DebugDeviceContext;
@@ -15,7 +16,6 @@ internal void DebugDisplayBuffer(IScreenBuffer *Buffer){
 	Win32DisplayBuffer(GlobalDebugCTX.DebugWindowHandle, GlobalDebugCTX.DebugDeviceContext,
 		(Win32FrameBuffer *)Buffer);
 }
-
 
 
 

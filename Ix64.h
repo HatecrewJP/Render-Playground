@@ -25,7 +25,7 @@ extern "C" {
 		int RightClick;
 		int MiddleClick;
 	};
-	#define RENDER_FRAME(name) void (name) (struct IDebugContext *DebugCTX, struct IScreenBuffer *Buffer, int XOffset, struct IInput *Input)
+	#define RENDER_FRAME(name) void (name) (struct IDebugContext *DebugCTX, struct IScreenBuffer *Buffer, int XOffset, struct IInput *Input, bool *EnableFrameTime)
 	typedef RENDER_FRAME(render_frame);
 
 

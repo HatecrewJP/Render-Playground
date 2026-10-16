@@ -6,4 +6,5 @@
 struct IDebugContext{
 	void(*DebugDisplayBuffer)(IScreenBuffer *Buffer);
 };
+
 #endif
