@@ -21,6 +21,7 @@
     <ClCompile Include="Win32Platform.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="fxd.h" />
     <ClInclude Include="IDebug.h" />
     <ClInclude Include="Ix64.h" />
   </ItemGroup>
@@ -192,7 +193,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <AssemblerOutput>AssemblyCode</AssemblerOutput>
       <Optimization>Disabled</Optimization>
       <ExceptionHandling>false</ExceptionHandling>
@@ -201,6 +202,7 @@
       <TreatWarningAsError>true</TreatWarningAsError>
       <UseUnicodeForAssemblerListing>false</UseUnicodeForAssemblerListing>
       <DisableSpecificWarnings>4091;</DisableSpecificWarnings>
+      <SupportJustMyCode>false</SupportJustMyCode>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

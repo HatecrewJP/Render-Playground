@@ -5,18 +5,9 @@
 #include "math.h"
 #include "stdio.h"
 #include "memory.h"
-
+#include "fxd.h"
 
 #define PI 3.141592653589793238462643383279f
-#define FRACTION_BITS 8
-#define INTEGER_BITS 24
-typedef int fxd_24_8;
-
-
-global constexpr float float_fxd_max = (float)(1 << (INTEGER_BITS - 1)) - (1.0f / (float)(1 << FRACTION_BITS));
-global constexpr float float_fxd_min = (float)-(1 << (INTEGER_BITS - 1));
-global constexpr fxd_24_8 fxd_max = (1 << (INTEGER_BITS + FRACTION_BITS - 1)) - 1;
-global constexpr fxd_24_8 fxd_min = -(1 << (INTEGER_BITS + FRACTION_BITS - 1));
 
 struct Vec2{
 	float x;
@@ -24,18 +15,9 @@ struct Vec2{
 };
 
 
-internal inline fxd_24_8 FloatToFixed(float n){
-	
-
-}
-
 internal inline int Abs32(int n) {
 	return (n + (n >> 31)) ^ (n >> 31);
 }
-
-
-
-
 internal inline float RoundFloat(float In){
 	return (float)((int)(In + 0.5f));
 }
@@ -161,28 +143,26 @@ internal void BresenhamLine(IScreenBuffer *Buffer,
 		}
 	}
 }
-
-
-internal void fxd_BresenhamLine(IScreenBuffer *Buffer,
-	int SX, int SY, //Line Start
-	int EX, int EY, //Line End
+internal void BresenhamLine(IScreenBuffer *Buffer,
+	fxd_24_8 SX, fxd_24_8 SY, //Line Start
+	fxd_24_8 EX, fxd_24_8 EY, //Line End
 	unsigned Color){
 	ASSERT(Buffer);
-	int SlopeX = EX - SX;
-	int SlopeY = EY - SY;
+	int SlopeX = FxdToInt(EX - SX);
+	int SlopeY = FxdToInt(EY - SY);
 	unsigned *Pixels;
-	
+
 	if(Abs32(SlopeX) >= Abs32(SlopeY)){
 		//x-major lines
-		int MinX = (SX <= EX) ? SX : EX;
-		int MinY = (SX <= EX) ? SY : EY;
-		int MaxX = (SX <= EX) ? EX : SX;
-		int MaxY = (SX <= EX) ? EY : SY;
+		int MinX = (SX <= EX) ? (int)SX : (int)EX;
+		int MinY = (SX <= EX) ? (int)SY : (int)EY;
+		int MaxX = (SX <= EX) ? (int)EX : (int)SX;
+		int MaxY = (SX <= EX) ? (int)EY : (int)SY;
 
 		int dX = (MaxX - MinX);
 		int dY = (MaxY - MinY);
 
-		int YInc = (dY < 0) ?  -(1 << FRACTION_BITS) : 1 << FRACTION_BITS;
+		int YInc = (dY < 0) ? -1 : 1;
 		dY = (dY < 0) ? -dY : dY;
 
 		int dInc1 = 2 * dY;
@@ -218,6 +198,73 @@ internal void fxd_BresenhamLine(IScreenBuffer *Buffer,
 		int Pitch = Buffer->Width;
 		int inc = 0;
 		for(int Y = MinY; Y < MaxY; Y++){
+			*Pixels = Color;
+			//printf("%d", D < 0 ? 1 : 0);
+			inc = (D < 0) ? (Pitch + XInc) : Pitch;
+			D += (D < 0) ? dInc2 : dInc1;
+			Pixels += inc;
+		}
+	}
+}
+
+
+//Useless?
+internal void fxd_BresenhamLine2(IScreenBuffer *Buffer,
+	fxd_24_8 SX, fxd_24_8 SY, //Line Start
+	fxd_24_8 EX, fxd_24_8 EY, //Line End
+	unsigned Color){
+	ASSERT(Buffer);
+	fxd_24_8 SlopeX = EX - SX;
+	fxd_24_8 SlopeY = EY - SY;
+	unsigned *Pixels;
+	
+	if(Abs32(SlopeX) >= Abs32(SlopeY)){
+		fxd_24_8 MinX = (SX <= EX) ? SX : EX;
+		fxd_24_8 MinY = (SX <= EX) ? SY : EY;
+		fxd_24_8 MaxX = (SX <= EX) ? EX : SX;
+		fxd_24_8 MaxY = (SX <= EX) ? EY : SY;
+
+		fxd_24_8 dX = (MaxX - MinX);
+		fxd_24_8 dY = (MaxY - MinY);
+
+		int YInc = (dY < 0) ? -1 : 1;
+		//x-major lines
+		
+		dY = (dY < 0) ? NegateFxd(dY) : dY;
+		
+		int dInc1 = 2 * dY;
+		int dInc2 = 2 * (dY - dX);
+		int D = (2 * dY) - dX;
+
+		Pixels = Buffer->Data + Buffer->Width * FxdToInt(MinY) + FxdToInt(MinX);
+		int Pitch = Buffer->Width * YInc;
+		int inc = 0;
+		for(int X = MinX; X < MaxX; X += FXD_ONE){
+			*Pixels = Color;
+			inc = (D > 0) ? (Pitch + 1) : 1;
+			D += (D > 0) ? dInc2 : dInc1;
+			Pixels += inc;
+		}
+	} else{
+		fxd_24_8 MinX = (SY <= EY) ? SX : EX;
+		fxd_24_8 MinY = (SY <= EY) ? SY : EY;
+		fxd_24_8 MaxX = (SY <= EY) ? EX : SX;
+		fxd_24_8 MaxY = (SY <= EY) ? EY : SY;
+
+		fxd_24_8 dX = (MaxX - MinX);
+		fxd_24_8 dY = (MaxY - MinY);
+
+		int XInc = (dX < 0) ? -1 : 1;
+		dX = (dX < 0) ? NegateFxd(dX) : dX;
+
+		int dInc1 = 2 * (-dX);
+		int dInc2 = 2 * (dY - dX);
+		int D = (2 * dY) - dX;
+
+		Pixels = Buffer->Data + Buffer->Width * FxdToInt(MinY) + FxdToInt(MinX);
+		int Pitch = Buffer->Width;
+		int inc = 0;
+		for(int Y = MinY; Y < MaxY; Y += FXD_ONE){
 			*Pixels = Color;
 			//printf("%d", D < 0 ? 1 : 0);
 			inc = (D < 0) ? (Pitch + XInc) : Pitch;
@@ -268,12 +315,16 @@ internal inline float fMin3(float A, float B, float C){
 }
 
 
+
 internal inline float fMax3(float A, float B, float C){
 	float Max = A;
 	Max = Max > B ? Max : B;
 	Max = Max > C ? Max : C;
 	return Max;
 }
+
+
+
 
 internal inline int TriOrientation(
 	float AX, float AY,
@@ -289,9 +340,27 @@ internal int TestTopLeftRule(float AX, float AY, float BX, float BY){
 	int TopEdge = Horizontal && DirLeft;
 	int DownEdge = (BY - AY) < 0;
 	return TopEdge || DownEdge;
-
-
 }
+
+internal inline int fxd_TriOrientation(
+	fxd_24_8 AX, fxd_24_8 AY,
+	fxd_24_8 BX, fxd_24_8 BY,
+	fxd_24_8 CX, fxd_24_8 CY){
+
+	fxd_48_16 tmp1 = FixedMul((CX - AX), (BY - AY));
+	fxd_48_16 tmp2 = FixedMul((CY - AY), (AX - BX));
+
+	return (int) DToSFxd(tmp1 + tmp2);
+}
+
+internal bool fxd_TestTopLeftRule(fxd_24_8 AX, fxd_24_8 AY, fxd_24_8 BX, fxd_24_8 BY){
+	int Horizontal = AY == BY;
+	int DirLeft = (BX - AX) < 0;
+	int TopEdge = Horizontal && DirLeft;
+	int DownEdge = (BY - AY) < 0;
+	return TopEdge || DownEdge;
+}
+
 
 internal void RasterizeTri(IScreenBuffer *Buffer, 
 	float AX, float AY,
@@ -350,6 +419,63 @@ internal void RasterizeTri(IScreenBuffer *Buffer,
 	}
 }
 
+
+internal void fxd_RasterizeTri(IScreenBuffer *Buffer,
+	fxd_24_8 AX, fxd_24_8 AY,
+	fxd_24_8 BX, fxd_24_8 BY,
+	fxd_24_8 CX, fxd_24_8 CY,
+	unsigned Color){
+	//https://fgiesen.wordpress.com/2013/02/08/triangle-rasterization-in-practice/
+
+	fxd_24_8 Orientation = fxd_TriOrientation(AX, AY, BX, BY, CX, CY);
+	// Orientation < 0: Clockwise Orientation
+	// Orientation == 0: Triangle with Area 0
+	if(Orientation <= 0){
+		return;
+	}
+
+	fxd_24_8 MinX = fxd_Min3(AX, BX, CX);
+	fxd_24_8 MinY = fxd_Min3(AY, BY, CY);
+	fxd_24_8 MaxX = fxd_Max3(AX, BX, CX);
+	fxd_24_8 MaxY = fxd_Max3(AY, BY, CY);
+
+	if(MinX < 0){
+		MinX = 0;
+	}
+	if(MinY < 0){
+		MinY = 0;
+	}
+	if(MaxX > IntToFxd(Buffer->Width)){
+		MaxX = Buffer->Width;
+	}
+	if(MaxY > IntToFxd(Buffer->Height)){
+		MaxY = Buffer->Height;
+	}
+	int Bias0 = fxd_TestTopLeftRule(AX, AY, BX, BY) ? 0 : -1;
+	int Bias1 = fxd_TestTopLeftRule(CX, CY, AX, AY) ? 0 : -1;
+	int Bias2 = fxd_TestTopLeftRule(BX, BY, CX, CY) ? 0 : -1;
+
+	unsigned *Pixels = Buffer->Data + FxdToInt(MinX) + FxdToInt(MinY) * Buffer->Width;
+	for(fxd_24_8 Y = MinY; Y < MaxY; Y+=FXD_ONE){
+		for(fxd_24_8 X = MinX; X < MaxX; X+=FXD_ONE){
+			int InsideTri[3];
+			
+			fxd_24_8 PX = X, PY = Y;
+			InsideTri[0] = (fxd_TriOrientation(AX, AY, BX, BY, PX, PY) + Bias0) >= 0;
+			InsideTri[1] = (fxd_TriOrientation(AX, AY, PX, PY, CX, CY) + Bias1) >= 0;
+			InsideTri[2] = (fxd_TriOrientation(BX, BY, CX, CY, PX, PY) + Bias2) >= 0;
+
+			if(InsideTri[0] && InsideTri[1] && InsideTri[2]){
+				*Pixels = Color;
+			}
+			Pixels++;
+
+		}
+		Pixels += Buffer->Width - FxdToInt(MaxX - MinX);
+	}
+}
+
+
 internal void RasterizeTriOutline(IScreenBuffer *Buffer, 
 	float AX, float AY,
 	float BX, float BY,
@@ -387,11 +513,13 @@ internal void NaiveRasterizePoint(IScreenBuffer *Buffer,
 	Pixels[Index] = Color;
 }
 
-internal void RasterizePoint(IScreenBuffer* Buffer, 
-	float X, float Y,
+internal void fxd_RasterizePoint(IScreenBuffer* Buffer, 
+	fxd_24_8 X, fxd_24_8 Y,
 	unsigned Color) 
 {
 	//Requires Subpixel precision
+	fxd_RasterizeTri(Buffer, X - FXD_HALF, Y - FXD_HALF, X - FXD_HALF, Y + FXD_HALF, X + FXD_HALF, Y - FXD_HALF, Color);
+	fxd_RasterizeTri(Buffer, X - FXD_HALF, Y + FXD_HALF, X + FXD_HALF, Y + FXD_HALF, X + FXD_HALF, Y - FXD_HALF, Color);
 }
 
 
@@ -490,14 +618,25 @@ internal void SetBackgroundColor(IScreenBuffer *Buffer, unsigned BackgroundColor
 		}
 	}
 }
+
 IDebugContext *GlobalDebugCtx;
 global int Init = 0;
+
+
+
 RENDER_FRAME(RenderFrame){
+	float test = -8191.6309f;
+	fxd_24_8 test_fxd = FloatToFixed(test);
+
+
 	if(!Init){
 		printf("fxd_min: %d\n", fxd_min);
 		printf("fxd_max: %d\n", fxd_max);
 		printf("float_fxd_min: %f\n", float_fxd_min);
-		printf("float_fxd_min: %f\n", float_fxd_min);
+		printf("float_fxd_max: %f\n", float_fxd_max);
+		
+		
+		
 		Init++;
 	}
 	unsigned x = 0x4b000000;
@@ -512,13 +651,19 @@ RENDER_FRAME(RenderFrame){
 	ASSERT(Pixels);
 	unsigned BackgroundColor = 0xffffffff;
 	SetBackgroundColor(Buffer, BackgroundColor);
-	static float X1 = 100;static float Y1 = 100;
-	static float X2 = 100;static float Y2 = 500;
-	static float X3 = 500;static float Y3 = 500;
-	static float X4 = 500;static float Y4 = 100;
+	static float X1 = 100.5f;static float Y1 = 100.0f;
+	static float X2 = 100.5f;static float Y2 = 500.0f;
+	static float X3 = 500.5f;static float Y3 = 500.0f;
+	static float X4 = 500.5f;static float Y4 = 100.0f;
 
-	int& Test = XOffset;
-	Test = 5;
+	if(*XOffset > 128){
+		*XOffset = 0;
+
+	}
+	X1 = 100.5f + 0.5f * (float)*XOffset;
+	X2 = 100.5f + 0.5f * (float)*XOffset;
+	X3 = 500.5f + 0.5f * (float)*XOffset;
+	X4 = 500.5f + 0.5f * (float)*XOffset;
 
 	if(Input->LeftClick){
 		X1 = Input->MouseX;
@@ -532,13 +677,25 @@ RENDER_FRAME(RenderFrame){
 		X3 = Input->MouseX;
 		Y3 = Input->MouseY;
 	}
-
 	
+	fxd_24_8 fxd_X1 = FloatToFixed(X1); fxd_24_8 fxd_Y1 = FloatToFixed(Y1);
+	fxd_24_8 fxd_X2 = FloatToFixed(X2); fxd_24_8 fxd_Y2 = FloatToFixed(Y2);
+	fxd_24_8 fxd_X3 = FloatToFixed(X3); fxd_24_8 fxd_Y3 = FloatToFixed(Y3);
+	fxd_24_8 fxd_X4 = FloatToFixed(X4); fxd_24_8 fxd_Y4 = FloatToFixed(Y4);
 
+
+	//fxd_BresenhamLine(Buffer, fxd_X1, fxd_Y1, fxd_X3, fxd_Y3, 0xffff0000);
+	//BresenhamLine(Buffer, X1, Y1, X3, Y3, 0xff0000ff);
+
+	RasterizeTri(Buffer, X1, Y1, X2, Y2, X3, Y3, 0xFF00FF00);
+	fxd_RasterizeTri(Buffer, fxd_X1, fxd_Y1, fxd_X2, fxd_Y2, fxd_X3, fxd_Y3, 0xFFFF00FF);
+
+	/*
 	RasterizeTri(Buffer, 100,100,100,500,500,500, 0xffffff00);
 	RasterizeRectangle(Buffer, X1, Y1, X3, Y3,0xffff0000);
 	NaiveRasterizeQuadraticBezierCurve(Buffer, X1, Y1, X3, Y3, (X3-X1)/4.0f + X1, 3.0f * (Y3 - Y1) / 2.0f + Y1, 0xff0000ff);
 	NaiveRasterizeCircleOutline(Buffer, ((X3 - X1) / 4.0f) + X1, (3.0f * (Y3 - Y1)) / 4.0f + Y1, 2.0f,0xff00ff00);
+	*/
 
 
 

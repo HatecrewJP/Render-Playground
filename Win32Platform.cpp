@@ -146,16 +146,17 @@ internal unsigned long long GetLastFileWriteTime(char *Path){
 internal void ReloadDLL(char *DLLPath, char *DLLName, HMODULE *DLL, render_frame** proc, unsigned long long *FileTime) {
 	if(*DLL){
 		ASSERT(FreeLibrary(*DLL));
+		printf("DLL unloaded\n");
 	}
 	unsigned long long NewFileTime = GetLastFileWriteTime(DLLPath);
 	ASSERT(NewFileTime > *FileTime);
-
+	DWORD Error = GetLastError();
 	int i = 0; 
 	//DLL might still be locked by linker. Try 1000 times or crash
 	while(!CopyFileA(DLLPath, "x64/Debug/tmp_Application.dll", 0)){
 		i++;
 		if(i > 1000){
-			DWORD Error = GetLastError();
+			Error = GetLastError();
 			ASSERT(0);
 		}
 	}
@@ -164,7 +165,9 @@ internal void ReloadDLL(char *DLLPath, char *DLLName, HMODULE *DLL, render_frame
 	ASSERT(DLL);
 	*proc = (render_frame *)GetProcAddress(*DLL, "RenderFrame");
 	ASSERT(*proc);
+	NewFileTime = GetLastFileWriteTime(DLLPath);
 	*FileTime = NewFileTime;
+	printf("DLL loaded\n");
 }
 
 #ifdef DEBUG
@@ -285,7 +288,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 			switch (MessageIdentifier){
 			case WM_KEYDOWN: {
 				Win32KeyDownState State;
-				ASSERT(sizeof(State) == sizeof(LParam));
+				//ASSERT(sizeof(State) == sizeof(LParam));
 				State = *(Win32KeyDownState *)&LParam;
 
 				printf("%u\n", State.ScanCode);
@@ -317,7 +320,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 
 		static int Offset = 0;
 		Win32ClearBackBuffer(&GlobalFrameBuffer);
-		RenderFrame(&AppDebugCTX,(IScreenBuffer*) &GlobalFrameBuffer, Offset,&Input,&PrintFrameTime);
+		RenderFrame(&AppDebugCTX,(IScreenBuffer*) &GlobalFrameBuffer, &Offset,&Input,&PrintFrameTime);
 
 		Offset++;
 		

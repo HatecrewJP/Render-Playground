@@ -1,0 +1,9 @@
+// raddbg 0.9.25 project file
+
+name: RenderPG
+target:
+{
+  executable: "x64/Debug/Platform.exe"
+  working_directory: ""
+  enabled: 1
+}
