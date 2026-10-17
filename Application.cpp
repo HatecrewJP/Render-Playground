@@ -628,15 +628,12 @@ RENDER_FRAME(RenderFrame){
 	float test = -8191.6309f;
 	fxd_24_8 test_fxd = FloatToFixed(test);
 
-
+	static int Direction = 1;
 	if(!Init){
 		printf("fxd_min: %d\n", fxd_min);
 		printf("fxd_max: %d\n", fxd_max);
 		printf("float_fxd_min: %f\n", float_fxd_min);
 		printf("float_fxd_max: %f\n", float_fxd_max);
-		
-		
-		
 		Init++;
 	}
 	unsigned x = 0x4b000000;
@@ -644,26 +641,34 @@ RENDER_FRAME(RenderFrame){
 	float y = -8388608.0f;
 	int z = (int)y;
 	//const float *xx = &float_fxd_min;
-	*EnableFrameTime = 0;
+	*EnableFrameTime = 1;
 	GlobalDebugCtx = DebugCTX;
 	ASSERT(Buffer);
 	unsigned *Pixels = Buffer->Data;
 	ASSERT(Pixels);
 	unsigned BackgroundColor = 0xffffffff;
 	SetBackgroundColor(Buffer, BackgroundColor);
-	static float X1 = 100.5f;static float Y1 = 100.0f;
-	static float X2 = 100.5f;static float Y2 = 500.0f;
-	static float X3 = 500.5f;static float Y3 = 500.0f;
-	static float X4 = 500.5f;static float Y4 = 100.0f;
+	static float X1 = 100.5f;static float Y1 = 100.5f;
+	static float X2 = 100.5f;static float Y2 = 500.5f;
+	static float X3 = 500.5f;static float Y3 = 500.5f;
+	static float X4 = 500.5f;static float Y4 = 100.5f;
+	
 
-	if(*XOffset > 128){
-		*XOffset = 0;
-
+	if(*XOffset > 256){
+		Direction = -1;
 	}
+	if (*XOffset < -128) {
+		Direction = 1;
+	}
+
+	*XOffset += Direction * 8;
+
 	X1 = 100.5f + 0.5f * (float)*XOffset;
 	X2 = 100.5f + 0.5f * (float)*XOffset;
 	X3 = 500.5f + 0.5f * (float)*XOffset;
 	X4 = 500.5f + 0.5f * (float)*XOffset;
+
+	Y3 = 500.5f + 0.5f * (float)*XOffset;
 
 	if(Input->LeftClick){
 		X1 = Input->MouseX;
@@ -687,8 +692,8 @@ RENDER_FRAME(RenderFrame){
 	//fxd_BresenhamLine(Buffer, fxd_X1, fxd_Y1, fxd_X3, fxd_Y3, 0xffff0000);
 	//BresenhamLine(Buffer, X1, Y1, X3, Y3, 0xff0000ff);
 
-	RasterizeTri(Buffer, X1, Y1, X2, Y2, X3, Y3, 0xFF00FF00);
 	fxd_RasterizeTri(Buffer, fxd_X1, fxd_Y1, fxd_X2, fxd_Y2, fxd_X3, fxd_Y3, 0xFFFF00FF);
+	RasterizeTri(Buffer, X1, Y1, X2, Y2, X3, Y3, 0xFF00FF00);
 
 	/*
 	RasterizeTri(Buffer, 100,100,100,500,500,500, 0xffffff00);

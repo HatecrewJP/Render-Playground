@@ -321,9 +321,6 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 		static int Offset = 0;
 		Win32ClearBackBuffer(&GlobalFrameBuffer);
 		RenderFrame(&AppDebugCTX,(IScreenBuffer*) &GlobalFrameBuffer, &Offset,&Input,&PrintFrameTime);
-
-		Offset++;
-		
 		Win32DisplayBuffer(WindowHandle, GlobalDeviceContext,&GlobalFrameBuffer);
 		
 

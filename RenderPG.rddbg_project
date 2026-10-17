@@ -1,4 +1,4 @@
-// raddbg 0.9.25 project file
+// raddbg 0.9.26 project file
 
 recent_file: path: "Application.cpp"
 recent_file: path: "fxd.h"
@@ -11,19 +11,4 @@ target:
   executable: "x64/Debug/Platform.exe"
   enabled: 1
   working_directory: ""
-}
-debug_info:
-{
-  path: "D:/dev/Render-Playground/x64/Debug/Platform.pdb"
-  timestamp: 66228543828971
-}
-debug_info:
-{
-  path: "D:/dev/Render-Playground/x64/Debug/Application.pdb"
-  timestamp: 66228543962137
-}
-debug_info:
-{
-  path: "D:/dev/Render-Playground/x64/Debug/Platform.rdi"
-  timestamp: 66228526330695
 }
