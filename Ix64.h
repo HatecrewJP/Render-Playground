@@ -3,12 +3,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#define global static
-#define internal static
-#define ASSERT(x) if(!(x)) __debugbreak();
-	typedef unsigned char byte;
-
 	struct IScreenBuffer{
 		//CAREFUL WHEN CHANGING:
 		//Type Punning when passing to Application
@@ -24,8 +18,10 @@ extern "C" {
 		int LeftClick;
 		int RightClick;
 		int MiddleClick;
+		int KeyR;
+		int KeySpace;
 	};
-	#define RENDER_FRAME(name) void (name) (struct IDebugContext *DebugCTX, struct IScreenBuffer *Buffer, int *XOffset, struct IInput *Input, bool *EnableFrameTime)
+	#define RENDER_FRAME(name) void (name) (struct IDebugContext *DebugCTX, struct IScreenBuffer *Buffer, int *XOffset, struct IInput *Input, bool *EnableFrameTime, void *MemBuffer, int MemSize)
 	typedef RENDER_FRAME(render_frame);
 
 

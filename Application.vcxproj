@@ -173,8 +173,14 @@
     <ClCompile Include="Application.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Application.h" />
+    <ClInclude Include="fxd.h" />
+    <ClInclude Include="fxd_tri.h" />
     <ClInclude Include="IDebug.h" />
     <ClInclude Include="Ix64.h" />
+    <ClInclude Include="line.h" />
+    <ClInclude Include="rpg_math.h" />
+    <ClInclude Include="tri.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

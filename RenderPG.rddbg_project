@@ -1,14 +1,17 @@
-// raddbg 0.9.26 project file
+// raddbg 0.9.29 project file
 
+recent_file: path: "fxd_tri.h"
 recent_file: path: "Application.cpp"
-recent_file: path: "fxd.h"
-recent_file: path: "../../os/obj/amd64fre/minkernel/crts/ucrt/src/appcrt/tran/xmt/objfre/amd64/minkernel/crts/ucrt/src/appcrt/tran/frexp.c"
-recent_file: path: "C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/ucrt/corecrt_math.h"
 recent_file: path: "Win32Platform.cpp"
+recent_file: path: "line.h"
+recent_file: path: "fxd.h"
+recent_file: path: "tri.h"
+recent_file: path: "C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/ucrt/corecrt_stdio_config.h"
+recent_file: path: "C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/ucrt/corecrt_math.h"
+recent_file: path: "../../os/obj/amd64fre/minkernel/crts/ucrt/src/appcrt/tran/xmt/objfre/amd64/minkernel/crts/ucrt/src/appcrt/tran/frexp.c"
 name: RenderPG
 target:
 {
   executable: "x64/Debug/Platform.exe"
   enabled: 1
-  working_directory: ""
 }

@@ -26,5 +26,23 @@
     <ClInclude Include="Ix64.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="fxd.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="fxd_tri.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="tri.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Application.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="rpg_math.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="line.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

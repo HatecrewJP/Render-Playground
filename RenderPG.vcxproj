@@ -21,7 +21,6 @@
     <ClCompile Include="Win32Platform.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="fxd.h" />
     <ClInclude Include="IDebug.h" />
     <ClInclude Include="Ix64.h" />
   </ItemGroup>

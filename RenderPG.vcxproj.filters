@@ -29,8 +29,5 @@
     <ClInclude Include="Ix64.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="fxd.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>

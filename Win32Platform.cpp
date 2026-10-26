@@ -8,6 +8,11 @@
 #include "IDebug.h"
 
 
+#define global static
+#define internal static
+#define Assert(x) if(!(x)) __debugbreak();
+
+
 
 #define ArrayCount(x) (sizeof(x)/sizeof((x)[0]))
 #define ToBit(x) ((x)*8)
@@ -52,12 +57,12 @@ global Win32FrameBuffer GlobalFrameBuffer;
 
 
 internal void Win32DisplayBuffer(HWND WindowHandle, HDC DeviceContext, Win32FrameBuffer *Buffer){
-	ASSERT(WindowHandle);
-	ASSERT(DeviceContext);
-	ASSERT(Buffer);
+	Assert(WindowHandle);
+	Assert(DeviceContext);
+	Assert(Buffer);
 
 	RECT rc;
-	ASSERT(GetClientRect(WindowHandle, &rc));
+	Assert(GetClientRect(WindowHandle, &rc));
 	UINT RectWidth = rc.right - rc.left;
 	UINT RectHeight = rc.bottom - rc.top;
 
@@ -80,7 +85,7 @@ internal void Win32ResizeFrameBuffer(struct Win32FrameBuffer *FrameBuffer, struc
 		BackBuffer->Width = NewWidth;
 		BackBuffer->Height = NewHeight;
 		BackBuffer->Data = (unsigned *)VirtualAlloc(NULL, BackBuffer->Width * BackBuffer->Height * BackBuffer->PixelSize, MEM_COMMIT, PAGE_READWRITE);
-		ASSERT(BackBuffer->Data);
+		Assert(BackBuffer->Data);
 	}
 
 	FrameBuffer->Width = NewWidth;
@@ -124,9 +129,9 @@ LRESULT Wndproc(HWND WindowHandle, UINT Message, WPARAM WParam, LPARAM LParam){
 }
 
 internal void Win32ClearBackBuffer(struct Win32FrameBuffer *Buffer){
-	ASSERT(Buffer);
-	ASSERT(Buffer->Pixels);
-	ASSERT(Buffer->Pixels);
+	Assert(Buffer);
+	Assert(Buffer->Pixels);
+	Assert(Buffer->Pixels);
 
 	void *Data = Buffer->Pixels;
 	UINT Size = Buffer->Width * Buffer->Height * (UINT)Buffer->PixelSize;
@@ -142,29 +147,41 @@ internal unsigned long long GetLastFileWriteTime(char *Path){
 }
 
 
-
 internal void ReloadDLL(char *DLLPath, char *DLLName, HMODULE *DLL, render_frame** proc, unsigned long long *FileTime) {
+	//Set Working Directory to path of exe
+	char ModulePath[4096] = {0};
+	unsigned Len = GetModuleFileNameA(NULL, ModulePath, 4096);
+	Assert(Len < 4096);
+	char *tmp = ModulePath + Len;
+	while(*tmp != '\\'){
+		*tmp = '\0';
+		tmp--;
+	}
+	Assert(SetCurrentDirectoryA(ModulePath));
+	
 	if(*DLL){
-		ASSERT(FreeLibrary(*DLL));
+		Assert(FreeLibrary(*DLL));
 		printf("DLL unloaded\n");
 	}
+
+
 	unsigned long long NewFileTime = GetLastFileWriteTime(DLLPath);
-	ASSERT(NewFileTime > *FileTime);
+	Assert(NewFileTime > *FileTime);
 	DWORD Error = GetLastError();
 	int i = 0; 
 	//DLL might still be locked by linker. Try 1000 times or crash
-	while(!CopyFileA(DLLPath, "x64/Debug/tmp_Application.dll", 0)){
+	while(!CopyFileA(DLLPath, "tmp_Application.dll", 0)){
 		i++;
 		if(i > 1000){
 			Error = GetLastError();
-			ASSERT(0);
+			Assert(0);
 		}
 	}
 
 	*DLL = LoadLibraryA("tmp_Application.dll");
-	ASSERT(DLL);
+	Assert(DLL);
 	*proc = (render_frame *)GetProcAddress(*DLL, "RenderFrame");
-	ASSERT(*proc);
+	Assert(*proc);
 	NewFileTime = GetLastFileWriteTime(DLLPath);
 	*FileTime = NewFileTime;
 	printf("DLL loaded\n");
@@ -178,15 +195,15 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 	long long PerfCountFrequency;
 	QueryPerformanceFrequency((LARGE_INTEGER *)&PerfCountFrequency);
 	
-
+	
 	HMODULE DLL = 0;
-	char *DLLPath = (char *)"x64/Debug/Application.dll";
+	char *DLLPath = (char *)"Application.dll";
 	render_frame *RenderFrame = 0;
 	unsigned long long DLLWriteTime = 0;
 	ReloadDLL(DLLPath, (char *)"Application.dll", &DLL, &RenderFrame, &DLLWriteTime);
 
 	FILE* fp;
-	ASSERT(AllocConsole());
+	Assert(AllocConsole());
 	freopen_s(&fp, "CONIN$", "r", stdin);
 	freopen_s(&fp, "CONOUT$", "w", stdout);
 	freopen_s(&fp, "CONOUT$", "w", stderr);
@@ -206,7 +223,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 	WindowClass.lpszClassName = "Window";
 
 	ATOM WindowAtom = RegisterClassA(&WindowClass);
-	ASSERT(WindowAtom);
+	Assert(WindowAtom);
 
 	HWND WindowHandle = CreateWindowExA(
 		0,
@@ -215,8 +232,8 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 		WS_OVERLAPPEDWINDOW | WS_VISIBLE, 
 		0, 
 		0, 
-		1920, 
-		1080, 
+		2560, 
+		1440, 
 		NULL, 
 		NULL, 
 		hInst, 
@@ -229,10 +246,10 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 	}
 	
 	RECT CurrentRect;
-	ASSERT(GetClientRect(WindowHandle, &CurrentRect));
+	Assert(GetClientRect(WindowHandle, &CurrentRect));
 	
 	HDC ScreenDeviceContext = GetDC(NULL);
-	ASSERT(ScreenDeviceContext);
+	Assert(ScreenDeviceContext);
 
 
 
@@ -242,7 +259,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 	BackBuffer.PixelSize = sizeof(unsigned);
 	BackBuffer.Data = (unsigned*)VirtualAlloc(NULL, BackBuffer.Width * BackBuffer.Height * BackBuffer.PixelSize, MEM_COMMIT, PAGE_READWRITE);
 	BackBuffer.Stride = BackBuffer.Width * BackBuffer.PixelSize;
-	ASSERT(BackBuffer.Data);
+	Assert(BackBuffer.Data);
 
 	GlobalFrameBuffer.BMPInfo.bmiHeader.biSize = sizeof(GlobalFrameBuffer.BMPInfo.bmiHeader);
 	GlobalFrameBuffer.BMPInfo.bmiHeader.biWidth = BackBuffer.Width;
@@ -266,6 +283,10 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 	AppDebugCTX.DebugDisplayBuffer = DebugDisplayBuffer;
 #endif
 
+	int MemSize = (1 << 20);
+	void *MemBuffer = VirtualAlloc(0, (SIZE_T) MemSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	Assert(MemBuffer);
+
 	bool PrintFrameTime;
 	bool Running = 1;
 	long long Previous, Current;
@@ -288,8 +309,11 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 			switch (MessageIdentifier){
 			case WM_KEYDOWN: {
 				Win32KeyDownState State;
-				//ASSERT(sizeof(State) == sizeof(LParam));
+				//Assert(sizeof(State) == sizeof(LParam));
 				State = *(Win32KeyDownState *)&LParam;
+				
+				Input.KeyR = WParam == 'R';
+				Input.KeySpace = WParam == VK_SPACE;
 
 				printf("%u\n", State.ScanCode);
 			}break;
@@ -320,7 +344,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 
 		static int Offset = 0;
 		Win32ClearBackBuffer(&GlobalFrameBuffer);
-		RenderFrame(&AppDebugCTX,(IScreenBuffer*) &GlobalFrameBuffer, &Offset,&Input,&PrintFrameTime);
+		RenderFrame(&AppDebugCTX,(IScreenBuffer*) &GlobalFrameBuffer, &Offset,&Input,&PrintFrameTime,MemBuffer, MemSize);
 		Win32DisplayBuffer(WindowHandle, GlobalDeviceContext,&GlobalFrameBuffer);
 		
 
