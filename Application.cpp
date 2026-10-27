@@ -17,32 +17,40 @@ internal inline void SetPixel(IScreenBuffer *Buffer, int X, int Y, unsigned Colo
 
 #include "rpg_math.h"
 
-internal void RasterizeRectangle(IScreenBuffer *Buffer,
-	float Left, float Top,
-	float Right, float Bottom,
-	unsigned Color)
-{
-	unsigned MinX = RoundFloatToUInt(Left);
-	unsigned MinY = RoundFloatToUInt(Top);
-	unsigned MaxX = RoundFloatToUInt(Right);
-	unsigned MaxY = RoundFloatToUInt(Bottom);
-	if(MinX < 0){
-		MinX = 0;
-	}
-	if(MinY < 0){
-		MinY = 0;
-	}
-	if(MaxX >= (unsigned)Buffer->Width){
-		MaxX = (unsigned)Buffer->Width;
-	}
-	if(MaxY >= (unsigned)Buffer->Height){
-		MaxY = (unsigned)Buffer->Height;
-	}
-	unsigned *Row = Buffer->Data + MinX + MinY * Buffer->Width;
 
-	for(unsigned Y = MinY; Y < MaxY; Y++){
+internal void SetBackgroundColor(IScreenBuffer *Buffer, unsigned BackgroundColor){
+	unsigned *Pixels = Buffer->Data;
+	for(int i = 0; i < (Buffer->Width * Buffer->Height); i++){
+		*Pixels = BackgroundColor;
+		Pixels++;
+	}
+}
+
+internal void fxd_RasterizeRectangle(IScreenBuffer *Buffer,
+	fxd_24_8 Left, fxd_24_8 Top,
+	fxd_24_8 Right, fxd_24_8 Bottom,
+	unsigned Color){
+	fxd_24_8 MinX = fxd_Round(Left - FXD_HALF) + FXD_HALF;
+	fxd_24_8 MinY = fxd_Round(Top - FXD_HALF) + FXD_HALF;
+	fxd_24_8 MaxX = fxd_Round(Right - FXD_HALF) + FXD_HALF;
+	fxd_24_8 MaxY = fxd_Round(Bottom - FXD_HALF) + FXD_HALF;
+
+	if(MinX < FXD_HALF){
+		MinX = FXD_HALF;
+	}
+	if(MinY < FXD_HALF){
+		MinY = FXD_HALF;
+	}
+	if(MaxX >= IntToFxd(Buffer->Width)){
+		MaxX = IntToFxd(Buffer->Width);
+	}
+	if(MaxY >= IntToFxd(Buffer->Height)){
+		MaxY = IntToFxd(Buffer->Height);
+	}
+	unsigned *Row = Buffer->Data + FxdToIntF(MinY) * Buffer->Width + FxdToIntR(MinX);
+	for(fxd_24_8 Y = MinY; Y < MaxY; Y += FXD_ONE){
 		unsigned *Pixels = Row;
-		for(unsigned X = MinX; X < MaxX; X++){
+		for(fxd_24_8 X = MinX; X < MaxX; X += FXD_ONE){
 			*Pixels = Color;
 			Pixels++;
 		}
@@ -50,6 +58,43 @@ internal void RasterizeRectangle(IScreenBuffer *Buffer,
 	}
 }
 
+internal void DrawQuad(IScreenBuffer *Buffer,
+	int X1, int Y1,
+	int X2, int Y2,
+	int X3, int Y3,
+	int X4, int Y4,
+	unsigned Color)
+{
+	//Diagonal is 2-4
+	RasterizeTri(Buffer, X1, Y1, X2, Y2, X4, Y4, Color);
+	RasterizeTri(Buffer, X2, Y2, X3, Y3, X4, Y4, Color);
+}
+
+internal void fxd_DrawQuad(IScreenBuffer *Buffer,
+	fxd_24_8 X1, fxd_24_8 Y1,
+	fxd_24_8 X2, fxd_24_8 Y2,
+	fxd_24_8 X3, fxd_24_8 Y3,
+	fxd_24_8 X4, fxd_24_8 Y4,
+	unsigned Color)
+{
+	//Diagonal is 2-4
+	fxd_RasterizeTri(Buffer, X1, Y1, X2, Y2, X4, Y4, Color);
+	fxd_RasterizeTri(Buffer, X2, Y2, X3, Y3, X4, Y4, Color);
+}
+
+internal void fxd_DrawQuadOutline(IScreenBuffer *Buffer,
+	fxd_24_8 X1, fxd_24_8 Y1,
+	fxd_24_8 X2, fxd_24_8 Y2,
+	fxd_24_8 X3, fxd_24_8 Y3,
+	fxd_24_8 X4, fxd_24_8 Y4,
+	unsigned Color)
+{
+	//Diagonal is 2-4
+	fxd_BresenhamLine2(Buffer, X1, Y1, X2, Y2, Color);
+	fxd_BresenhamLine2(Buffer, X2, Y2, X3, Y3, Color);
+	fxd_BresenhamLine2(Buffer, X3, Y3, X4, Y4, Color);
+	fxd_BresenhamLine2(Buffer, X4, Y4, X1, Y1, Color);
+}
 
 
 internal void RasterizeTriOutline(IScreenBuffer *Buffer, 
@@ -58,64 +103,49 @@ internal void RasterizeTriOutline(IScreenBuffer *Buffer,
 	int CX, int CY, 
 	unsigned Color)
 {
-	BresenhamLine(Buffer, AX,AY,BX,BY, Color);
-	BresenhamLine(Buffer, BX,BY,CX,CY, Color);
-	BresenhamLine(Buffer, CX,CY,AX,AY, Color);
+	BresenhamLine2(Buffer, AX,AY,BX,BY, Color);
+	BresenhamLine2(Buffer, BX,BY,CX,CY, Color);
+	BresenhamLine2(Buffer, CX,CY,AX,AY, Color);
 }
 
-internal void NaiveRasterizeTriOutline(IScreenBuffer *Buffer,
-	float AX, float AY,
-	float BX, float BY,
-	float CX, float CY,
+internal void RasterizePoint(IScreenBuffer *Buffer,
+	int X, int Y,
 	unsigned Color)
 {
-	NaiveRasterizeLine(Buffer, AX, AY, BX, BY, Color);
-	NaiveRasterizeLine(Buffer, BX, BY, CX, CY, Color);
-	NaiveRasterizeLine(Buffer, CX, CY, AX, AY, Color);
+	if(X >= 0 && X <= Buffer->Width && Y >= 0 && Y <= Buffer->Height){
+		*(Buffer->Data + Y * Buffer->Width + X) = Color;
+	}
 }
 
-
-
-
-internal void NaiveRasterizePoint(IScreenBuffer *Buffer,
-	float X, float Y,
+internal void fxd_RasterizePoint(IScreenBuffer *Buffer,
+	fxd_24_8 _X, fxd_24_8 _Y,
 	unsigned Color)
 {
-	unsigned *Pixels = Buffer->Data;
-	
-	float CurrentPosX = (float)RoundFloat(X);
-	float CurrentPosY = (float)RoundFloat(Y);
-	int Index = (int)CurrentPosX + (int)CurrentPosY * Buffer->Width;
-	Pixels[Index] = Color;
+	fxd_24_8 X = FxdToIntF(_X - FXD_FRAC_MIN);
+	fxd_24_8 Y = FxdToIntF(_Y - FXD_FRAC_MIN);
+	if(X >= 0 && X <= Buffer->Width && Y >= 0 && Y <= Buffer->Height){
+		*(Buffer->Data + Y * Buffer->Width + X) = Color;
+	}
 }
 
-internal void fxd_RasterizePoint2(IScreenBuffer* Buffer, 
+internal void fxd_RasterizePoint2(IScreenBuffer *Buffer,
 	fxd_24_8 X, fxd_24_8 Y,
-	unsigned Color) 
-{
-	fxd_RasterizeTri(Buffer, X - FXD_HALF, Y - FXD_HALF, X - FXD_HALF, Y + FXD_HALF, X + FXD_HALF, Y - FXD_HALF, Color);
-	fxd_RasterizeTri(Buffer, X - FXD_HALF, Y + FXD_HALF, X + FXD_HALF, Y + FXD_HALF, X + FXD_HALF, Y - FXD_HALF, Color);
+	unsigned Color){
+	fxd_24_8 TmpX = fxd_Floor(X - FXD_FRAC_MIN) + FXD_HALF;
+	fxd_24_8 TmpY = fxd_Floor(Y - FXD_FRAC_MIN) + FXD_HALF;
+	if(TmpX >= 0 && TmpX <= (IntToFxd(Buffer->Width) - FXD_HALF) && TmpY >= 0 && TmpY <= (IntToFxd(Buffer->Height) - FXD_HALF)){
+		fxd_SetPixel(Buffer, TmpX, TmpY, Color);
+	}
 }
 
 internal void fxd_RasterizePoint3(IScreenBuffer *Buffer,
 	fxd_24_8 X, fxd_24_8 Y,
 	unsigned Color){
-	fxd_IncRasterizeTri2(Buffer, X - FXD_HALF, Y - FXD_HALF, X - FXD_HALF, Y + FXD_HALF, X + FXD_HALF, Y - FXD_HALF, Color);
-	fxd_IncRasterizeTri2(Buffer, X - FXD_HALF, Y + FXD_HALF, X + FXD_HALF, Y + FXD_HALF, X + FXD_HALF, Y - FXD_HALF, Color);
+	fxd_RasterizeTri(Buffer, X - FXD_HALF, Y - FXD_HALF, X - FXD_HALF, Y + FXD_HALF, X + FXD_HALF, Y - FXD_HALF, Color);
+	fxd_RasterizeTri(Buffer, X - FXD_HALF, Y + FXD_HALF, X + FXD_HALF, Y + FXD_HALF, X + FXD_HALF, Y - FXD_HALF, Color);
 }
 
-internal void fxd_RasterizePoint(IScreenBuffer *Buffer,
-	fxd_24_8 X, fxd_24_8 Y,
-	unsigned Color)
-{	
-	fxd_24_8 TmpX = fxd_Floor(X - FXD_FRAC_MIN) + FXD_HALF;
-	fxd_24_8 TmpY = fxd_Floor(Y - FXD_FRAC_MIN) + FXD_HALF;
-	if(TmpX >= 0 && TmpX < IntToFxd(Buffer->Width) && TmpY >= 0 && TmpY < IntToFxd(Buffer->Height)){
-		fxd_SetPixel(Buffer, TmpX, TmpY, Color);
 
-	}
-	
-}
 
 internal void NaiveRasterizeCircleOutline(IScreenBuffer *Buffer, 
 	float X,float Y,
@@ -139,13 +169,7 @@ internal void NaiveRasterizeCircleOutline(IScreenBuffer *Buffer,
 		int Index = (int)CurrentPosX + (int)CurrentPosY * Buffer->Width;
 		Pixels[Index] = Color;
 	}
-
-
-
 }
-
-
-
 
 internal void NaiveRasterizeQuadraticBezierCurve(IScreenBuffer *Buffer, 
 	float SX, float SY, //Start
@@ -203,126 +227,110 @@ internal void NaiveRasterizeCubicBezierCurve(IScreenBuffer *Buffer,
 
 
 
-internal void SetBackgroundColor(IScreenBuffer *Buffer, unsigned BackgroundColor){
-	unsigned *CurrentPixel = Buffer->Data;
-	for(int Col = 0; Col < Buffer->Width; Col++){
-		for(int Row = 0; Row < Buffer->Height; Row++){
-			*CurrentPixel = BackgroundColor;
-			CurrentPixel++;
-		}
-	}
-}
-
 IDebugContext *GlobalDebugCtx;
 RENDER_FRAME(RenderFrame){
 	int &Init = *(int*)MemBuffer;
-
-	float *State = (float*) ((byte*)MemBuffer + sizeof(Init));
-	static int Direction = 1;
+	*EnableFrameTime = 1;
+	GlobalDebugCtx = DebugCTX;
+	Assert(Buffer);
+	Assert(Buffer->Data);
 	if(Input->KeyR){
 		Init = 0;
 	}
 
 	if(!Init){
-		State[0] =  2262.5f; State[1] =  351.5f;
-		State[2] =  130.5f; State[3] = 846.5f;
-		State[4] = 846.5f; State[5] = 846.5f;
-		State[6] = 1100.0f; State[7] =  100.0f;
-
-
 		printf("fxd_min: %d\n", fxd_min);
 		printf("fxd_max: %d\n", fxd_max);
 		printf("float_fxd_min: %f\n", float_fxd_min);
 		printf("float_fxd_max: %f\n", float_fxd_max);
 
-		fxd_24_8 A = FloatToFixed(-8465.00390624f);
-		fxd_24_8 B = FloatToFixed(-8465.00390624f);
-
-		char SA[32];
-		char SB[32];
-		fxd_FormatFxd(A, SA, 32); 
-		fxd_FormatFxd(B, SB, 32); 
-
-		printf("A: %s\n",SA);
-		printf("B: %s\n",SB);
-
-
-
 		Init++;
 	}
+
 	
-	*EnableFrameTime = 0;
-	GlobalDebugCtx = DebugCTX;
-	Assert(Buffer);
-	unsigned *Pixels = Buffer->Data;
-	Assert(Pixels);
-	unsigned BackgroundColor = 0xffffffff;
-	SetBackgroundColor(Buffer, BackgroundColor);
-	static float &X1 = State[0]; static float &Y1 = State[1];
-	static float &X2 = State[2]; static float &Y2 = State[3];
-	static float &X3 = State[4]; static float &Y3 = State[5];
-	static float &X4 = State[6]; static float &Y4 = State[7];
-	
-	if(*XOffset > 256){
-		Direction = -1;
-	}
-	if (*XOffset < -128) {
-		Direction = 1;
-	}
-
-	*XOffset += Direction * 8;
-
-	/*X1 = 100.5f + 0.5f * (float)*XOffset;
-	X2 = 100.5f + 0.5f * (float)*XOffset;
-	X3 = 500.5f + 0.5f * (float)*XOffset;
-	X4 = 500.5f + 0.5f * (float)*XOffset;
-
-	Y3 = 500.5f + 0.5f * (float)*XOffset;*/
-
-	if(Input->LeftClick){
-		X1 = Input->MouseX;
-		Y1 = Input->MouseY;
-	}
-	if(Input->RightClick){
-		X2 = Input->MouseX;
-		Y2 = Input->MouseY;
-	}
-	if(Input->MiddleClick){
-		X3 = Input->MouseX;
-		Y3 = Input->MouseY;
-	}
-	if(Input->KeySpace){
-		X4 = Input->MouseX;
-		Y4 = Input->MouseY;
-	}
-	
-	IScreenBuffer TmpBuffer = {0};
-	TmpBuffer.Width = 26;
-	TmpBuffer.Height = 16;
-	TmpBuffer.PixelSize = 4;
-	TmpBuffer.Data = (unsigned *)((byte*)MemBuffer + 4096);
-	Buffer = &TmpBuffer;
-
+	unsigned BackgroundColor = 0xffa0a0a0;
 	SetBackgroundColor(Buffer, BackgroundColor);
 
-	fxd_24_8 fxd_X1 = FloatToFixed(17.0f); fxd_24_8 fxd_Y1 = FloatToFixed(1.5f);
-	fxd_24_8 fxd_X2 = FloatToFixed(5.0f); fxd_24_8 fxd_Y2 = FloatToFixed(8.0f);
-	fxd_24_8 fxd_X3 = FloatToFixed(9.0f); fxd_24_8 fxd_Y3 = FloatToFixed(8.0f);
+	float X = 1200.0f;
+	float Y = 700.0f;
+	float Width = 800.0f;
+	float Height = 800.0f;
+	static float Angle = 3.0f;
+
+
+	float X1, X2, X3, X4;
+	float Y1, Y2, Y3, Y4;
+
+	X1 = X - (Width / 2); Y1 = Y - (Height / 2);
+	X2 = X - (Width / 2); Y2 = Y + (Height / 2);
+	X3 = X + (Width / 2); Y3 = Y + (Height / 2);
+	X4 = X + (Width / 2); Y4 = Y - (Height / 2);
+
+	float RA, RB, RC, RD;
+
+	RA =  cosf(Angle);
+	RB =  sinf(Angle);
+	RC = -sinf(Angle);
+	RD =  cosf(Angle);
+
+	float NX1, NX2, NX3, NX4;
+	float NY1, NY2, NY3, NY4;
+
+	X1 = X1 - X;
+	X2 = X2 - X;
+	X3 = X3 - X;
+	X4 = X4 - X;
+
+	Y1 = Y1 - Y;
+	Y2 = Y2 - Y;
+	Y3 = Y3 - Y;
+	Y4 = Y4 - Y;
+
+	NX1 = RA * X1 + RC * Y1;
+	NX2 = RA * X2 + RC * Y2;
+	NX3 = RA * X3 + RC * Y3;
+	NX4 = RA * X4 + RC * Y4;
+
+	NY1 = RB * X1 + RD * Y1;
+	NY2 = RB * X2 + RD * Y2;
+	NY3 = RB * X3 + RD * Y3;
+	NY4 = RB * X4 + RD * Y4;
+
+	NX1 = NX1 + X;
+	NX2 = NX2 + X;
+	NX3 = NX3 + X;
+	NX4 = NX4 + X;
+
+	NY1 = NY1 + Y;
+	NY2 = NY2 + Y;
+	NY3 = NY3 + Y;
+	NY4 = NY4 + Y;
+
+	fxd_24_8 fxd_X1 = FloatToFxd(NX1); fxd_24_8 fxd_Y1 = FloatToFxd(NY1);
+	fxd_24_8 fxd_X2 = FloatToFxd(NX2); fxd_24_8 fxd_Y2 = FloatToFxd(NY2);
+	fxd_24_8 fxd_X3 = FloatToFxd(NX3); fxd_24_8 fxd_Y3 = FloatToFxd(NY3);
+	fxd_24_8 fxd_X4 = FloatToFxd(NX4); fxd_24_8 fxd_Y4 = FloatToFxd(NY4);
 	
-	fxd_IncRasterizeTri(Buffer, fxd_X1, fxd_Y1, fxd_X2, fxd_Y2, fxd_X3, fxd_Y3, 0xffff0000);
-		
-	fxd_RasterizePoint(Buffer, fxd_X1, fxd_Y1,0xffff00ff);
-	fxd_RasterizePoint(Buffer, fxd_X2, fxd_Y2,0xffff00ff);
-	fxd_RasterizePoint(Buffer, fxd_X3, fxd_Y3,0xffff00ff);
 
 
-	fxd_24_8 fxd_X4 = FloatToFixed(1.5f); fxd_24_8 fxd_Y4 = FloatToFixed(3.5f);
-	fxd_24_8 fxd_X5 = FloatToFixed(7.5f); fxd_24_8 fxd_Y5 = FloatToFixed(2.5f);
-	fxd_RasterizePoint(Buffer, fxd_X4, fxd_Y4, 0xffff00ff);
-	fxd_RasterizePoint(Buffer, fxd_X5, fxd_Y5, 0xffff00ff);
-	fxd_BresenhamLine(Buffer, fxd_X5, fxd_Y5, fxd_X4, fxd_Y4, 0xff000000);
+	fxd_DrawQuad(Buffer, fxd_X1, fxd_Y1, fxd_X2, fxd_Y2, fxd_X3, fxd_Y3, fxd_X4, fxd_Y4, 0xffff0000);
+	fxd_DrawQuadOutline(Buffer, fxd_X1, fxd_Y1, fxd_X2, fxd_Y2, fxd_X3, fxd_Y3, fxd_X4, fxd_Y4, 0xffffffff);
+	
+	//fxd_TriHalfPlanes(Buffer, fxd_X1, fxd_Y1, fxd_X2, fxd_Y2, fxd_X3, fxd_Y3);
+
+	fxd_RasterizePoint(Buffer, fxd_X1, fxd_Y1,0xff00ff00);
+	fxd_RasterizePoint(Buffer, fxd_X2, fxd_Y2,0xff00ff00);
+	fxd_RasterizePoint(Buffer, fxd_X3, fxd_Y3,0xff00ff00);
+	fxd_RasterizePoint(Buffer, fxd_X4, fxd_Y4,0xff00ff00);
+
+	Angle += PI / 360;
+
 
 	
+
+
+
+
 
 
 }
