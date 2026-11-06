@@ -3,10 +3,10 @@
 #include "math.h"
 #define PI 3.141592653589793238462643383279f
 
-struct Vec2{
+typedef struct Vec2{
 	float x;
 	float y;
-};
+} Vec2;
 
 internal inline float DistVec2(Vec2 a, Vec2 b){
 	return (float)sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y));

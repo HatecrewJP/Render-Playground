@@ -1,6 +1,7 @@
 #pragma once
-
+#define DEBUG 1
 #include "Ix64.h"
+
 #include "IDebug.h"
 
 #define global static
@@ -9,6 +10,6 @@
 typedef unsigned char byte;
 
 
-#define DEBUG 1
+
 #define APP 1
 

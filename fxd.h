@@ -1,4 +1,6 @@
 #pragma once
+#include <math.h>
+
 typedef int fxd_24_8;
 typedef long long fxd_48_16;
 #define FRACTION_BITS 8

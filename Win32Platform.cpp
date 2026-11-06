@@ -1,7 +1,7 @@
 #define DEBUG 1
 #include "Ix64.h"
 
-#include "windowsx.h"
+#include <windowsx.h>
 #include <windows.h>
 #include <stdio.h>
 #include <math.h>
@@ -281,6 +281,8 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 
 	IDebugContext AppDebugCTX = {0};
 	AppDebugCTX.DebugDisplayBuffer = DebugDisplayBuffer;
+	AppDebugCTX.PerfCountFrequency = PerfCountFrequency;
+	AppDebugCTX.GetTime = DebugGetTime;
 #endif
 
 	int MemSize = (1 << 20);

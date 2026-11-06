@@ -17,6 +17,12 @@ internal void DebugDisplayBuffer(IScreenBuffer *Buffer){
 		(Win32FrameBuffer *)Buffer);
 }
 
+internal long long DebugGetTime(void){
+	long long x = 0;
+	Assert(QueryPerformanceCounter((LARGE_INTEGER*) &x));
+	return x;
+
+}
 
 
 #endif

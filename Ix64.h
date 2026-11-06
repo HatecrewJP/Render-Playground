@@ -1,9 +1,12 @@
 #pragma once
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-	struct IScreenBuffer{
+	struct IDebugContext;
+
+	typedef struct IScreenBuffer{
 		//CAREFUL WHEN CHANGING:
 		//Type Punning when passing to Application
 		int Width;
@@ -11,7 +14,7 @@ extern "C" {
 		int PixelSize;
 		int unused;
 		unsigned *Data;
-	};
+	} IScreenBuffer;
 	struct IInput{
 		short MouseX;
 		short MouseY;
@@ -21,7 +24,7 @@ extern "C" {
 		int KeyR;
 		int KeySpace;
 	};
-	#define RENDER_FRAME(name) void (name) (struct IDebugContext *DebugCTX, struct IScreenBuffer *Buffer, int *XOffset, struct IInput *Input, bool *EnableFrameTime, void *MemBuffer, int MemSize)
+	#define RENDER_FRAME(name) void name (struct IDebugContext *DebugCTX, struct IScreenBuffer *Buffer, int *XOffset, struct IInput *Input, bool *EnableFrameTime, void *MemBuffer, int MemSize)
 	typedef RENDER_FRAME(render_frame);
 
 

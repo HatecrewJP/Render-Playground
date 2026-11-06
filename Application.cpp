@@ -1,5 +1,8 @@
-#include "Application.h"
+#include <stdio.h>
+#include <memory.h>
 
+
+#include "Application.h"
 internal inline void SetPixel(IScreenBuffer *Buffer, int X, int Y, unsigned Color){
 	//Assumes that the point is valid
 	//Pixel center is at 0,0
@@ -7,16 +10,10 @@ internal inline void SetPixel(IScreenBuffer *Buffer, int X, int Y, unsigned Colo
 	*Pixel = Color;
 }
 
-#include "math.h"
-#include "stdio.h"
-#include "memory.h"
 
 #include "fxd_tri.h"
 #include "line.h"
 #include "tri.h"
-
-#include "rpg_math.h"
-
 
 internal void SetBackgroundColor(IScreenBuffer *Buffer, unsigned BackgroundColor){
 	unsigned *Pixels = Buffer->Data;
@@ -70,6 +67,8 @@ internal void DrawQuad(IScreenBuffer *Buffer,
 	RasterizeTri(Buffer, X2, Y2, X3, Y3, X4, Y4, Color);
 }
 
+
+
 internal void fxd_DrawQuad(IScreenBuffer *Buffer,
 	fxd_24_8 X1, fxd_24_8 Y1,
 	fxd_24_8 X2, fxd_24_8 Y2,
@@ -80,6 +79,17 @@ internal void fxd_DrawQuad(IScreenBuffer *Buffer,
 	//Diagonal is 2-4
 	fxd_RasterizeTri(Buffer, X1, Y1, X2, Y2, X4, Y4, Color);
 	fxd_RasterizeTri(Buffer, X2, Y2, X3, Y3, X4, Y4, Color);
+}
+
+internal void fxd_DrawQuadSSE(IScreenBuffer *Buffer,
+	fxd_24_8 X1, fxd_24_8 Y1,
+	fxd_24_8 X2, fxd_24_8 Y2,
+	fxd_24_8 X3, fxd_24_8 Y3,
+	fxd_24_8 X4, fxd_24_8 Y4,
+	unsigned Color){
+	//Diagonal is 2-4
+	fxd_RasterizeTriSSE(Buffer, X1, Y1, X2, Y2, X4, Y4, Color);
+	fxd_RasterizeTriSSE(Buffer, X2, Y2, X3, Y3, X4, Y4, Color);
 }
 
 internal void fxd_DrawQuadOutline(IScreenBuffer *Buffer,
@@ -227,10 +237,10 @@ internal void NaiveRasterizeCubicBezierCurve(IScreenBuffer *Buffer,
 
 
 
-IDebugContext *GlobalDebugCtx;
+struct IDebugContext *GlobalDebugCtx;
 RENDER_FRAME(RenderFrame){
 	int &Init = *(int*)MemBuffer;
-	*EnableFrameTime = 1;
+	*EnableFrameTime = 0;
 	GlobalDebugCtx = DebugCTX;
 	Assert(Buffer);
 	Assert(Buffer->Data);
@@ -247,7 +257,6 @@ RENDER_FRAME(RenderFrame){
 		Init++;
 	}
 
-	
 	unsigned BackgroundColor = 0xffa0a0a0;
 	SetBackgroundColor(Buffer, BackgroundColor);
 
@@ -296,6 +305,17 @@ RENDER_FRAME(RenderFrame){
 	NY3 = RB * X3 + RD * Y3;
 	NY4 = RB * X4 + RD * Y4;
 
+
+	NX1 *= 2;
+	NX2 *= 2;
+	NX3 *= 2;
+	NX4 *= 2;
+
+	NY1 *= 2;
+	NY2 *= 2;
+	NY3 *= 2;
+	NY4 *= 2;
+
 	NX1 = NX1 + X;
 	NX2 = NX2 + X;
 	NX3 = NX3 + X;
@@ -310,11 +330,32 @@ RENDER_FRAME(RenderFrame){
 	fxd_24_8 fxd_X2 = FloatToFxd(NX2); fxd_24_8 fxd_Y2 = FloatToFxd(NY2);
 	fxd_24_8 fxd_X3 = FloatToFxd(NX3); fxd_24_8 fxd_Y3 = FloatToFxd(NY3);
 	fxd_24_8 fxd_X4 = FloatToFxd(NX4); fxd_24_8 fxd_Y4 = FloatToFxd(NY4);
-	
 
+	//fxd_24_8 fxd_X1 = IntToFxd(0); fxd_24_8 fxd_Y1 = IntToFxd(0);
+	//fxd_24_8 fxd_X2 = IntToFxd(0); fxd_24_8 fxd_Y2 = IntToFxd(8);
+	//fxd_24_8 fxd_X3 = IntToFxd(8); fxd_24_8 fxd_Y3 = IntToFxd(8);
+	//fxd_24_8 fxd_X4 = IntToFxd(8); fxd_24_8 fxd_Y4 = IntToFxd(0);
+	
+	long long TS1, TS2;
+	TS1 = DebugCTX->GetTime();
+
+	fxd_DrawQuadSSE(Buffer, fxd_X1, fxd_Y1, fxd_X2, fxd_Y2, fxd_X3, fxd_Y3, fxd_X4, fxd_Y4, 0xffff0000);
+
+	TS2 = DebugCTX->GetTime();
+	float TimeElapsed = (float)((TS2 - TS1) * 1000) / (float)DebugCTX->PerfCountFrequency;
+	printf("SSE Quad: %f ms\n", TimeElapsed);
+
+	TS1 = DebugCTX->GetTime();
 
 	fxd_DrawQuad(Buffer, fxd_X1, fxd_Y1, fxd_X2, fxd_Y2, fxd_X3, fxd_Y3, fxd_X4, fxd_Y4, 0xffff0000);
-	fxd_DrawQuadOutline(Buffer, fxd_X1, fxd_Y1, fxd_X2, fxd_Y2, fxd_X3, fxd_Y3, fxd_X4, fxd_Y4, 0xffffffff);
+
+	TS2 = DebugCTX->GetTime();
+	TimeElapsed = (float)((TS2 - TS1) * 1000) / (float)DebugCTX->PerfCountFrequency;
+	printf("Scalar Quad: %f ms\n\n", TimeElapsed);
+
+	//fxd_RasterizeTri(Buffer, fxd_X1, fxd_Y1, fxd_X2, fxd_Y2, fxd_X3, fxd_Y3, 0xffff0000);
+	//fxd_DrawQuad(Buffer, fxd_X1, fxd_Y1, fxd_X2, fxd_Y2, fxd_X3, fxd_Y3, fxd_X4, fxd_Y4, 0xffff0000);
+	//fxd_DrawQuadOutline(Buffer, fxd_X1, fxd_Y1, fxd_X2, fxd_Y2, fxd_X3, fxd_Y3, fxd_X4, fxd_Y4, 0xffffffff);
 	
 	//fxd_TriHalfPlanes(Buffer, fxd_X1, fxd_Y1, fxd_X2, fxd_Y2, fxd_X3, fxd_Y3);
 

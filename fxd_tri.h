@@ -1,7 +1,11 @@
 #pragma once
+#include <emmintrin.h>
+#include <smmintrin.h>
 #include "Application.h"
 #include "fxd.h"
 #include "line.h"
+
+//https://godbolt.org/z/verK5x8Gq
 
 internal inline void fxd_SetPixel(IScreenBuffer *Buffer, fxd_24_8 X, fxd_24_8 Y, unsigned Color){
 	//Assumes that the point is valid
@@ -19,7 +23,7 @@ internal void fxd_RasterizeTriOutline(IScreenBuffer *Buffer,
 	fxd_BresenhamLine(Buffer, CX, CY, AX, AY, Color);
 }
 
-internal inline int fxd_TriOrientation(
+internal inline int fxd_TriOrientation2(
 	fxd_24_8 AX, fxd_24_8 AY,
 	fxd_24_8 BX, fxd_24_8 BY,
 	fxd_24_8 CX, fxd_24_8 CY)
@@ -28,7 +32,7 @@ internal inline int fxd_TriOrientation(
 	fxd_48_16 tmp2 = FixedMul((BY - AY), (CX - AX));
 	return (int)DToSFxd(tmp1 - tmp2);
 }
-internal inline int fxd_TriOrientation2(
+internal inline int fxd_TriOrientation(
 	fxd_24_8 AX, fxd_24_8 AY,
 	fxd_24_8 BX, fxd_24_8 BY,
 	fxd_24_8 CX, fxd_24_8 CY)
@@ -100,9 +104,9 @@ internal void fxd_RasterizeTri(IScreenBuffer *Buffer,
 	fxd_24_8 Bias1 = fxd_TestTopLeftRule(CX, CY, BX, BY) ? 0 : -FXD_FRAC_MIN;
 	fxd_24_8 Bias2 = fxd_TestTopLeftRule(AX, AY, CX, CY) ? 0 : -FXD_FRAC_MIN;
 
-	fxd_24_8 W0Row = fxd_TriOrientation2(AX, AY, BX, BY, PX, PY) + Bias0;
-	fxd_24_8 W1Row = fxd_TriOrientation2(BX, BY, CX, CY, PX, PY) + Bias1;
-	fxd_24_8 W2Row = fxd_TriOrientation2(AX, AY, PX, PY, CX, CY) + Bias2;
+	fxd_24_8 W0Row = fxd_TriOrientation(AX, AY, BX, BY, PX, PY) + Bias0;
+	fxd_24_8 W1Row = fxd_TriOrientation(BX, BY, CX, CY, PX, PY) + Bias1;
+	fxd_24_8 W2Row = fxd_TriOrientation(AX, AY, PX, PY, CX, CY) + Bias2;
 
 	unsigned *Row = Buffer->Data + FxdToIntF(PY) * Buffer->Width + FxdToIntF(PX);
 	for(fxd_24_8 Y = MinY; Y <= MaxY; Y += FXD_ONE){
@@ -111,7 +115,9 @@ internal void fxd_RasterizeTri(IScreenBuffer *Buffer,
 		fxd_24_8 W2 = W2Row;
 		unsigned *Pixels = Row;
 		for(fxd_24_8 X = MinX; X <= MaxX; X += FXD_ONE){
-			*Pixels = ((W0 | W1 | W2) >= 0) ? Color : *Pixels;
+			unsigned Pixel = *Pixels;
+			Pixel = ((W0 | W1 | W2) >= 0) ? Color : Pixel;
+			*Pixels = Pixel;
 			W0 += Inc0;
 			W1 += Inc1;
 			W2 += Inc2;
@@ -173,9 +179,9 @@ internal void fxd_RasterizeTri2(IScreenBuffer *Buffer,
 	fxd_24_8 Bias2 = fxd_TestTopLeftRule(CX, CY, AX, AY) ? 0 : FXD_FRAC_MIN;
 
 
-	fxd_24_8 W0Row = fxd_TriOrientation(AX, AY, BX, BY, PX, PY) + Bias0;
-	fxd_24_8 W1Row = fxd_TriOrientation(BX, BY, CX, CY, PX, PY) + Bias1;
-	fxd_24_8 W2Row = fxd_TriOrientation(AX, AY, PX, PY, CX, CY) + Bias2;
+	fxd_24_8 W0Row = fxd_TriOrientation2(AX, AY, BX, BY, PX, PY) + Bias0;
+	fxd_24_8 W1Row = fxd_TriOrientation2(BX, BY, CX, CY, PX, PY) + Bias1;
+	fxd_24_8 W2Row = fxd_TriOrientation2(AX, AY, PX, PY, CX, CY) + Bias2;
 
 	for(fxd_24_8 Y = MinY; Y <= MaxY; Y += FXD_ONE){
 		fxd_24_8 W0 = W0Row;
@@ -195,6 +201,8 @@ internal void fxd_RasterizeTri2(IScreenBuffer *Buffer,
 		W2Row += RowInc2;
 	}
 }
+
+
 
 internal void fxd_TriHalfPlanes(IScreenBuffer *Buffer,
 	fxd_24_8 AX, fxd_24_8 AY,
@@ -284,5 +292,114 @@ internal void fxd_TriHalfPlanes(IScreenBuffer *Buffer,
 		W0Row += RowInc0;
 		W1Row += RowInc1;
 		W2Row += RowInc2;
+	}
+}
+
+
+
+internal void fxd_RasterizeTriSSE(IScreenBuffer *Buffer,
+	fxd_24_8 _AX, fxd_24_8 _AY,
+	fxd_24_8 _BX, fxd_24_8 _BY,
+	fxd_24_8 _CX, fxd_24_8 _CY,
+	unsigned Color){
+	//Based on https://fgiesen.wordpress.com/2013/02/08/triangle-rasterization-in-practice/
+	//Input is Y-Down Counter-Clockwise tri. But the math is for Y-Up coordinate systems
+	//Change the orientation by swapping the order of the second and third vertex
+	//Then process this as a Y-Up Counter-Clockwise try
+	fxd_24_8 AX = _AX; fxd_24_8 AY = _AY;
+	fxd_24_8 BX = _CX; fxd_24_8 BY = _CY;
+	fxd_24_8 CX = _BX; fxd_24_8 CY = _BY;
+
+	int Orientation = fxd_TriOrientation(AX, AY, BX, BY, CX, CY);
+	// Orientation < 0: Clockwise Orientation
+	// Orientation == 0: Triangle with Area 0
+	if(Orientation <= 0){
+		return;
+	}
+
+	fxd_24_8 MinX = fxd_Floor(fxd_Min3(AX, BX, CX)) + FXD_HALF;
+	fxd_24_8 MinY = fxd_Floor(fxd_Min3(AY, BY, CY)) + FXD_HALF;
+	fxd_24_8 MaxX = fxd_Floor(fxd_Max3(AX, BX, CX)) + FXD_HALF;
+	fxd_24_8 MaxY = fxd_Floor(fxd_Max3(AY, BY, CY)) + FXD_HALF;
+
+	if(MinX < FXD_HALF){
+		MinX = FXD_HALF;
+	}
+	if(MinY < FXD_HALF){
+		MinY = FXD_HALF;
+	}
+	if(MaxX >= IntToFxd(Buffer->Width) - FXD_HALF){
+		MaxX = IntToFxd(Buffer->Width) - FXD_HALF;
+	}
+	if(MaxY >= IntToFxd(Buffer->Height) - FXD_HALF){
+		MaxY = IntToFxd(Buffer->Height) - FXD_HALF;
+	}
+	fxd_24_8 Inc0 = (AY - BY);
+	fxd_24_8 Inc1 = (BY - CY);
+	fxd_24_8 Inc2 = (CY - AY);
+
+	fxd_24_8 RowInc0 = (BX - AX);
+	fxd_24_8 RowInc1 = (CX - BX);
+	fxd_24_8 RowInc2 = (AX - CX);
+
+	fxd_24_8 PX = MinX;
+	fxd_24_8 PY = MinY;
+
+	fxd_24_8 Bias0 = fxd_TestTopLeftRule(BX, BY, AX, AY) ? 0 : -FXD_FRAC_MIN;
+	fxd_24_8 Bias1 = fxd_TestTopLeftRule(CX, CY, BX, BY) ? 0 : -FXD_FRAC_MIN;
+	fxd_24_8 Bias2 = fxd_TestTopLeftRule(AX, AY, CX, CY) ? 0 : -FXD_FRAC_MIN;
+
+	__m128i W0Row = _mm_set1_epi32(fxd_TriOrientation(AX, AY, BX, BY, PX, PY) + Bias0);
+	__m128i W1Row = _mm_set1_epi32(fxd_TriOrientation(BX, BY, CX, CY, PX, PY) + Bias1);
+	__m128i W2Row = _mm_set1_epi32(fxd_TriOrientation(AX, AY, PX, PY, CX, CY) + Bias2);
+
+	__m128i W0RowBias = _mm_set_epi32(3 * Inc0, 2 * Inc0, Inc0, 0);
+	__m128i W1RowBias = _mm_set_epi32(3 * Inc1, 2 * Inc1, Inc1, 0);
+	__m128i W2RowBias = _mm_set_epi32(3 * Inc2, 2 * Inc2, Inc2, 0);
+
+	W0Row = _mm_add_epi32(W0Row, W0RowBias);
+	W1Row = _mm_add_epi32(W1Row, W1RowBias);
+	W2Row = _mm_add_epi32(W2Row, W2RowBias);
+
+	__m128i Inc0V = _mm_set1_epi32(4 * Inc0);
+	__m128i Inc1V = _mm_set1_epi32(4 * Inc1);
+	__m128i Inc2V = _mm_set1_epi32(4 * Inc2);
+
+	__m128i RowInc0V = _mm_set1_epi32(RowInc0);
+	__m128i RowInc1V = _mm_set1_epi32(RowInc1);
+	__m128i RowInc2V = _mm_set1_epi32(RowInc2);
+
+
+	unsigned *Row = (Buffer->Data + FxdToIntF(PY) * Buffer->Width + FxdToIntF(PX));
+	
+	//might not be needed?
+	int iColor = *(int *)&Color;
+	__m128i ColorV = _mm_set1_epi32(iColor);
+	__m128i NegateMask = _mm_set1_epi32(0xffffffff);
+	
+	for(fxd_24_8 Y = MinY; Y < MaxY; Y += FXD_ONE){
+		__m128i W0 = W0Row;
+		__m128i W1 = W1Row;
+		__m128i W2 = W2Row;
+		__m128i *Pixels = (__m128i*)Row;
+		
+		for(fxd_24_8 X = MinX; X < MaxX; X += 4 * FXD_ONE){
+			__m128i Mask = _mm_or_si128(W0, W1);
+			Mask = _mm_or_si128(W2, Mask);
+			__m128i PixelV = _mm_lddqu_si128(Pixels);
+			__m128i MaskLt = _mm_cmplt_epi32(Mask, _mm_setzero_si128());
+			__m128i Tmp = _mm_blendv_epi8(ColorV, PixelV, MaskLt);
+			_mm_storeu_si128(Pixels, PixelV);
+			Pixels++;
+			
+			W0 = _mm_add_epi32(Inc0V, W0);
+			W1 = _mm_add_epi32(Inc1V, W1);
+			W2 = _mm_add_epi32(Inc2V, W2);
+
+		}
+		Row += Buffer->Width;
+		W0Row = _mm_add_epi32(RowInc0V,W0Row);
+		W1Row = _mm_add_epi32(RowInc1V,W1Row);
+		W2Row = _mm_add_epi32(RowInc2V,W2Row);
 	}
 }
