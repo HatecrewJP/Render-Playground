@@ -63,8 +63,6 @@ internal void Win32DisplayBuffer(HWND WindowHandle, HDC DeviceContext, Win32Fram
 
 	RECT rc;
 	Assert(GetClientRect(WindowHandle, &rc));
-	UINT RectWidth = rc.right - rc.left;
-	UINT RectHeight = rc.bottom - rc.top;
 
 	BITMAPINFO BMPInfo = Buffer->BMPInfo;
 	UINT BufferWidth = Buffer->Width;
@@ -172,7 +170,7 @@ internal void ReloadDLL(char *DLLPath, char *DLLName, HMODULE *DLL, render_frame
 	//DLL might still be locked by linker. Try 1000 times or crash
 	while(!CopyFileA(DLLPath, "tmp_Application.dll", 0)){
 		i++;
-		if(i > 1000){
+		if(i > 4096){
 			Error = GetLastError();
 			Assert(0);
 		}

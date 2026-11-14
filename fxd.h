@@ -82,7 +82,7 @@ internal inline fxd_24_8 FloatToFxd(float n){
 internal inline float FxdToFloat(fxd_24_8 n){
 	//Conversion according to https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm#3.2.4.1%20FLOAT%20-%3E%20Fixed%20Point%20Integer
 	float Result = (float)(n >> FRACTION_BITS);
-	Result += (float)((n & FXD_FRAC_MAX) / FXD_ONE);
+	Result += ((float)((n & FXD_FRAC_MAX)) / (float)FXD_ONE);
 	return Result;
 }
 internal inline fxd_24_8 DToSFxd(fxd_48_16 N){
