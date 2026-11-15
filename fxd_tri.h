@@ -91,6 +91,8 @@
 		if(MaxY >= IntToFxd(Buffer->Height) - FXD_HALF){
 			MaxY = IntToFxd(Buffer->Height) - FXD_HALF;
 		}
+
+		//Setup Position Interpolation
 		fxd_24_8 Inc0 = (AY - BY);
 		fxd_24_8 Inc1 = (BY - CY);
 		fxd_24_8 Inc2 = (CY - AY);
@@ -109,22 +111,10 @@
 		fxd_24_8 W0Row = fxd_TriOrientationS(AX, AY, BX, BY, PX, PY);
 		fxd_24_8 W1Row = fxd_TriOrientationS(BX, BY, CX, CY, PX, PY);
 		fxd_24_8 W2Row = fxd_TriOrientationS(AX, AY, PX, PY, CX, CY);
-		
-		
 
-		float tmp1 = FxdToFloat(W0Row);
-		float tmp2 = FxdToFloat(Area);
-		float tmp3 = tmp1 / tmp2;
-		float AttrW0Row = tmp1 / tmp2;
-		
-		tmp1 = FxdToFloat(W1Row);
-		tmp2 = FxdToFloat(Area);
-		tmp3 = tmp1 / tmp2;
+		//Setup Attribute Interpolation
+		float AttrW0Row = FxdToFloat(W0Row) / FxdToFloat(Area);
 		float AttrW1Row = FxdToFloat(W1Row) / FxdToFloat(Area);
-
-		tmp1 = FxdToFloat(W2Row);
-		tmp2 = FxdToFloat(Area);
-		tmp3 = tmp1 / tmp2;
 		float AttrW2Row = FxdToFloat(W2Row) / FxdToFloat(Area);
 
 		float AttrInc0 = FxdToFloat(Inc0) / FxdToFloat(Area);
@@ -135,7 +125,40 @@
 		float AttrRowInc1 = FxdToFloat(RowInc1) / FxdToFloat(Area);
 		float AttrRowInc2 = FxdToFloat(RowInc2) / FxdToFloat(Area);
 
-		//Add Bias after calculating weights for Attribute Interpolation
+		float AttrWARow[3] = {0}, AttrWBRow[3] = {0}, AttrWCRow[3] = {0};
+		AttrWARow[0] = AttrA[0] * AttrW1Row;
+		AttrWARow[1] = AttrA[1] * AttrW1Row;
+		AttrWARow[2] = AttrA[2] * AttrW1Row;
+		AttrWBRow[0] = AttrB[0] * AttrW2Row;
+		AttrWBRow[1] = AttrB[1] * AttrW2Row;
+		AttrWBRow[2] = AttrB[2] * AttrW2Row;
+		AttrWCRow[0] = AttrC[0] * AttrW0Row;
+		AttrWCRow[1] = AttrC[1] * AttrW0Row;
+		AttrWCRow[2] = AttrC[2] * AttrW0Row;
+
+		float AttrAInc[3], AttrBInc[3], AttrCInc[3];
+		AttrAInc[0] = AttrA[0] * AttrInc1;
+		AttrAInc[1] = AttrA[1] * AttrInc1;
+		AttrAInc[2] = AttrA[2] * AttrInc1;
+		AttrBInc[0] = AttrB[0] * AttrInc2;
+		AttrBInc[1] = AttrB[1] * AttrInc2;
+		AttrBInc[2] = AttrB[2] * AttrInc2;
+		AttrCInc[0] = AttrC[0] * AttrInc0;
+		AttrCInc[1] = AttrC[1] * AttrInc0;
+		AttrCInc[2] = AttrC[2] * AttrInc0;
+
+		float AttrARowInc[3], AttrBRowInc[3], AttrCRowInc[3];
+		AttrARowInc[0] = AttrA[0] * AttrRowInc1;
+		AttrARowInc[1] = AttrA[1] * AttrRowInc1;
+		AttrARowInc[2] = AttrA[2] * AttrRowInc1;
+		AttrBRowInc[0] = AttrB[0] * AttrRowInc2;
+		AttrBRowInc[1] = AttrB[1] * AttrRowInc2;
+		AttrBRowInc[2] = AttrB[2] * AttrRowInc2;
+		AttrCRowInc[0] = AttrC[0] * AttrRowInc0;
+		AttrCRowInc[1] = AttrC[1] * AttrRowInc0;
+		AttrCRowInc[2] = AttrC[2] * AttrRowInc0;
+
+		//Add Bias after calculating weights for correct Attribute Interpolation
 		W0Row += Bias0;
 		W1Row += Bias1;
 		W2Row += Bias2;
@@ -146,22 +169,24 @@
 			fxd_24_8 W1 = W1Row;
 			fxd_24_8 W2 = W2Row;
 
-			float AttrW0 = AttrW0Row;
-			float AttrW1 = AttrW1Row;
-			float AttrW2 = AttrW2Row;
+			float AttrWA[3];
+			float AttrWB[3];
+			float AttrWC[3];
+
+			memcpy(AttrWA, AttrWARow, sizeof(*AttrWA) * 3);
+			memcpy(AttrWB, AttrWBRow, sizeof(*AttrWB) * 3);
+			memcpy(AttrWC, AttrWCRow, sizeof(*AttrWC) * 3);
 
 			unsigned *Pixels = Row;
 			for(fxd_24_8 X = MinX; X <= MaxX; X += FXD_ONE){
 				unsigned Pixel = *Pixels;
 
-				float AttrColorR = AttrA[0] * AttrW1 + AttrB[0] * AttrW2 + AttrC[0] * AttrW0;
-				float AttrColorG = AttrA[1] * AttrW1 + AttrB[1] * AttrW2 + AttrC[1] * AttrW0;
-				float AttrColorB = AttrA[2] * AttrW1 + AttrB[2] * AttrW2 + AttrC[2] * AttrW0;
+				float fColor[3] = {0};
+				fColor[0] = AttrWA[0] + AttrWB[0] + AttrWC[0];
+				fColor[1] = AttrWA[1] + AttrWB[1] + AttrWC[1];
+				fColor[2] = AttrWA[2] + AttrWB[2] + AttrWC[2];
 
-				unsigned AttrColor = 0xff000000;
-				AttrColor |= (unsigned)AttrColorR << 16;
-				AttrColor |= (unsigned)AttrColorG <<  8;
-				AttrColor |= (unsigned)AttrColorB <<  0;
+				unsigned AttrColor = Float3ToARGB(fColor);
 				
 				Pixel = ((W0 | W1 | W2) >= 0) ? AttrColor : Pixel;
 				*Pixels = Pixel;
@@ -169,9 +194,15 @@
 				W1 += Inc1;
 				W2 += Inc2;
 
-				AttrW0 += AttrInc0;
-				AttrW1 += AttrInc1;
-				AttrW2 += AttrInc2;
+				AttrWA[0] += AttrAInc[0];
+				AttrWA[1] += AttrAInc[1];
+				AttrWA[2] += AttrAInc[2];
+				AttrWB[0] += AttrBInc[0];
+				AttrWB[1] += AttrBInc[1];
+				AttrWB[2] += AttrBInc[2];
+				AttrWC[0] += AttrCInc[0];
+				AttrWC[1] += AttrCInc[1];
+				AttrWC[2] += AttrCInc[2];
 
 
 				Pixels++;
@@ -181,9 +212,16 @@
 			W1Row += RowInc1;
 			W2Row += RowInc2;
 
-			AttrW0Row += AttrRowInc0;
-			AttrW1Row += AttrRowInc1;
-			AttrW2Row += AttrRowInc2;
+
+			AttrWARow[0] += AttrARowInc[0];
+			AttrWARow[1] += AttrARowInc[1];
+			AttrWARow[2] += AttrARowInc[2];
+			AttrWBRow[0] += AttrBRowInc[0];
+			AttrWBRow[1] += AttrBRowInc[1];
+			AttrWBRow[2] += AttrBRowInc[2];
+			AttrWCRow[0] += AttrCRowInc[0];
+			AttrWCRow[1] += AttrCRowInc[1];
+			AttrWCRow[2] += AttrCRowInc[2];
 
 		}
 	}
@@ -267,10 +305,10 @@
 		fxd_24_8 CX, fxd_24_8 CY){
 		//Based on https://fgiesen.wordpress.com/2013/02/08/triangle-rasterization-in-practice/
 
-		int Orientation = fxd_TriOrientationS(AX, AY, BX, BY, CX, CY);
+		int Area = fxd_TriOrientationS(AX, AY, BX, BY, CX, CY);
 		// Orientation < 0: Clockwise Orientation
 		// Orientation == 0: Triangle with Area 0
-		if(Orientation >= 0){
+		if(Area >= 0){
 			return;
 		}
 
@@ -354,9 +392,9 @@
 
 
 	internal void fxd_RasterizeTriSSE(IScreenBuffer *Buffer,
-		fxd_24_8 _AX, fxd_24_8 _AY,
-		fxd_24_8 _BX, fxd_24_8 _BY,
-		fxd_24_8 _CX, fxd_24_8 _CY,
+		fxd_24_8 _AX, fxd_24_8 _AY, float _AttrA[3],
+		fxd_24_8 _BX, fxd_24_8 _BY, float _AttrB[3],
+		fxd_24_8 _CX, fxd_24_8 _CY, float _AttrC[3],
 		unsigned Color){
 		//Based on https://fgiesen.wordpress.com/2013/02/08/triangle-rasterization-in-practice/
 		//Input is Y-Down Counter-Clockwise tri. But the math is for Y-Up coordinate systems
@@ -366,10 +404,28 @@
 		fxd_24_8 BX = _CX; fxd_24_8 BY = _CY;
 		fxd_24_8 CX = _BX; fxd_24_8 CY = _BY;
 
-		int Orientation = fxd_TriOrientationS(AX, AY, BX, BY, CX, CY);
+		float *AttrA = _AttrA;
+		float *AttrB = _AttrC;
+		float *AttrC = _AttrB;
+
+		__m128 AttrAV[3], AttrBV[3],AttrCV[3];
+		AttrAV[0] = _mm_set1_ps(AttrA[0]);
+		AttrBV[0] = _mm_set1_ps(AttrB[0]);
+		AttrCV[0] = _mm_set1_ps(AttrC[0]);
+
+		AttrAV[1] = _mm_set1_ps(AttrA[1]);
+		AttrBV[1] = _mm_set1_ps(AttrB[1]);
+		AttrCV[1] = _mm_set1_ps(AttrC[1]);
+		
+		AttrAV[2] = _mm_set1_ps(AttrA[2]);
+		AttrBV[2] = _mm_set1_ps(AttrB[2]);
+		AttrCV[2] = _mm_set1_ps(AttrC[2]);
+
+
+		int Area = fxd_TriOrientationS(AX, AY, BX, BY, CX, CY);
 		// Orientation < 0: Clockwise Orientation
 		// Orientation == 0: Triangle with Area 0
-		if(Orientation <= 0){
+		if(Area <= 0){
 			return;
 		}
 
@@ -390,6 +446,7 @@
 		if(MaxY >= IntToFxd(Buffer->Height) - FXD_HALF){
 			MaxY = IntToFxd(Buffer->Height) - FXD_HALF;
 		}
+		//Setup Position Interpolation
 		fxd_24_8 Inc0 = (AY - BY);
 		fxd_24_8 Inc1 = (BY - CY);
 		fxd_24_8 Inc2 = (CY - AY);
@@ -401,21 +458,21 @@
 		fxd_24_8 PX = MinX;
 		fxd_24_8 PY = MinY;
 
-		fxd_24_8 Bias0 = fxd_TestTopLeftRule(BX, BY, AX, AY) ? 0 : -FXD_FRAC_MIN;
-		fxd_24_8 Bias1 = fxd_TestTopLeftRule(CX, CY, BX, BY) ? 0 : -FXD_FRAC_MIN;
-		fxd_24_8 Bias2 = fxd_TestTopLeftRule(AX, AY, CX, CY) ? 0 : -FXD_FRAC_MIN;
+		__m128i Bias0 = _mm_set1_epi32(fxd_TestTopLeftRule(BX, BY, AX, AY) ? 0 : -FXD_FRAC_MIN);
+		__m128i Bias1 = _mm_set1_epi32(fxd_TestTopLeftRule(CX, CY, BX, BY) ? 0 : -FXD_FRAC_MIN);
+		__m128i Bias2 = _mm_set1_epi32(fxd_TestTopLeftRule(AX, AY, CX, CY) ? 0 : -FXD_FRAC_MIN);
 
-		__m128i W0Row = _mm_set1_epi32(fxd_TriOrientationS(AX, AY, BX, BY, PX, PY) + Bias0);
-		__m128i W1Row = _mm_set1_epi32(fxd_TriOrientationS(BX, BY, CX, CY, PX, PY) + Bias1);
-		__m128i W2Row = _mm_set1_epi32(fxd_TriOrientationS(AX, AY, PX, PY, CX, CY) + Bias2);
+		__m128i W0RowV = _mm_set1_epi32(fxd_TriOrientationS(AX, AY, BX, BY, PX, PY));
+		__m128i W1RowV = _mm_set1_epi32(fxd_TriOrientationS(BX, BY, CX, CY, PX, PY));
+		__m128i W2RowV = _mm_set1_epi32(fxd_TriOrientationS(AX, AY, PX, PY, CX, CY));
 
 		__m128i W0RowBias = _mm_set_epi32(3 * Inc0, 2 * Inc0, Inc0, 0);
 		__m128i W1RowBias = _mm_set_epi32(3 * Inc1, 2 * Inc1, Inc1, 0);
 		__m128i W2RowBias = _mm_set_epi32(3 * Inc2, 2 * Inc2, Inc2, 0);
 
-		W0Row = _mm_add_epi32(W0Row, W0RowBias);
-		W1Row = _mm_add_epi32(W1Row, W1RowBias);
-		W2Row = _mm_add_epi32(W2Row, W2RowBias);
+		W0RowV = _mm_add_epi32(W0RowV, W0RowBias);
+		W1RowV = _mm_add_epi32(W1RowV, W1RowBias);
+		W2RowV = _mm_add_epi32(W2RowV, W2RowBias);
 
 		__m128i Inc0V = _mm_set1_epi32(4 * Inc0);
 		__m128i Inc1V = _mm_set1_epi32(4 * Inc1);
@@ -426,24 +483,113 @@
 		__m128i RowInc2V = _mm_set1_epi32(RowInc2);
 
 
+		//Setup Attribute Interpolation
+		float AttrInc0 = FxdToFloat(Inc0) / FxdToFloat(Area);
+		float AttrInc1 = FxdToFloat(Inc1) / FxdToFloat(Area);
+		float AttrInc2 = FxdToFloat(Inc2) / FxdToFloat(Area);
+
+		float AttrRowInc0 = FxdToFloat(RowInc0) / FxdToFloat(Area);
+		float AttrRowInc1 = FxdToFloat(RowInc1) / FxdToFloat(Area);
+		float AttrRowInc2 = FxdToFloat(RowInc2) / FxdToFloat(Area);
+
+		__m128 AttrRowInc0V = _mm_set1_ps(AttrRowInc0);
+		__m128 AttrRowInc1V = _mm_set1_ps(AttrRowInc1);
+		__m128 AttrRowInc2V = _mm_set1_ps(AttrRowInc2);
+
+		__m128 AttrW0RowV = _mm_div_ps(Fxd4ToFloat(W0RowV), Fxd4ToFloat(_mm_set1_epi32(Area)));
+		__m128 AttrW1RowV = _mm_div_ps(Fxd4ToFloat(W1RowV), Fxd4ToFloat(_mm_set1_epi32(Area)));
+		__m128 AttrW2RowV = _mm_div_ps(Fxd4ToFloat(W2RowV), Fxd4ToFloat(_mm_set1_epi32(Area)));
+
+
+		__m128 AttrInc0V = _mm_set_ps1(4.0f * AttrInc0);
+		__m128 AttrInc1V = _mm_set_ps1(4.0f * AttrInc1);
+		__m128 AttrInc2V = _mm_set_ps1(4.0f * AttrInc2);
+
+		__m128 AttrWARowV[3], AttrWBRowV[3], AttrWCRowV[3];
+		AttrWARowV[0] = _mm_mul_ps(AttrAV[0], AttrW1RowV);
+		AttrWARowV[1] = _mm_mul_ps(AttrAV[1], AttrW1RowV);
+		AttrWARowV[2] = _mm_mul_ps(AttrAV[2], AttrW1RowV);
+
+		AttrWBRowV[0] = _mm_mul_ps(AttrBV[0], AttrW2RowV);
+		AttrWBRowV[1] = _mm_mul_ps(AttrBV[1], AttrW2RowV);
+		AttrWBRowV[2] = _mm_mul_ps(AttrBV[2], AttrW2RowV);
+
+		AttrWCRowV[0] = _mm_mul_ps(AttrCV[0], AttrW0RowV);
+		AttrWCRowV[1] = _mm_mul_ps(AttrCV[1], AttrW0RowV);
+		AttrWCRowV[2] = _mm_mul_ps(AttrCV[2], AttrW0RowV);
+		
+
+		__m128 AttrAIncV[3], AttrBIncV[3], AttrCIncV[3];
+		AttrAIncV[0] = _mm_mul_ps(AttrAV[0], AttrInc1V);
+		AttrAIncV[1] = _mm_mul_ps(AttrAV[1], AttrInc1V);
+		AttrAIncV[2] = _mm_mul_ps(AttrAV[2], AttrInc1V);
+
+		AttrBIncV[0] = _mm_mul_ps(AttrBV[0], AttrInc2V);
+		AttrBIncV[1] = _mm_mul_ps(AttrBV[1], AttrInc2V);
+		AttrBIncV[2] = _mm_mul_ps(AttrBV[2], AttrInc2V);
+
+		AttrCIncV[0] = _mm_mul_ps(AttrCV[0], AttrInc0V);
+		AttrCIncV[1] = _mm_mul_ps(AttrCV[1], AttrInc0V);
+		AttrCIncV[2] = _mm_mul_ps(AttrCV[2], AttrInc0V);
+
+		__m128 AttrARowIncV[3], AttrBRowIncV[3], AttrCRowIncV[3];
+		AttrARowIncV[0] = _mm_mul_ps(AttrAV[0], AttrRowInc1V);
+		AttrARowIncV[1] = _mm_mul_ps(AttrAV[1], AttrRowInc1V);
+		AttrARowIncV[2] = _mm_mul_ps(AttrAV[2], AttrRowInc1V);
+
+		AttrBRowIncV[0] = _mm_mul_ps(AttrBV[0], AttrRowInc2V);
+		AttrBRowIncV[1] = _mm_mul_ps(AttrBV[1], AttrRowInc2V);
+		AttrBRowIncV[2] = _mm_mul_ps(AttrBV[2], AttrRowInc2V);
+
+		AttrCRowIncV[0] = _mm_mul_ps(AttrCV[0], AttrRowInc0V);
+		AttrCRowIncV[1] = _mm_mul_ps(AttrCV[1], AttrRowInc0V);
+		AttrCRowIncV[2] = _mm_mul_ps(AttrCV[2], AttrRowInc0V);
+
+
+		//Add Top Left Rule Bias after Attribute Setup for correct attribute interpolation
+		W0RowV = _mm_add_epi32(W0RowV, Bias0);
+		W1RowV = _mm_add_epi32(W1RowV, Bias1);
+		W2RowV = _mm_add_epi32(W2RowV, Bias2);
+
 		unsigned *Row = (Buffer->Data + FxdToIntF(PY) * Buffer->Width + FxdToIntF(PX));
 
 		fxd_24_8 ModuloMask = ~(4 * FXD_ONE - 1);
-
-		//might not be needed?
 		__m128i ColorV = _mm_set1_epi32(Color);
 		for(fxd_24_8 Y = MinY; Y <= MaxY; Y += FXD_ONE){
-			__m128i W0V = W0Row;
-			__m128i W1V = W1Row;
-			__m128i W2V = W2Row;
+			__m128i W0V = W0RowV;
+			__m128i W1V = W1RowV;
+			__m128i W2V = W2RowV;
+
+			__m128 AttrWAV[3]; 
+			__m128 AttrWBV[3]; 
+			__m128 AttrWCV[3];
+
+			memcpy(AttrWAV, AttrWARowV, 3 * sizeof(*AttrWAV));
+			memcpy(AttrWBV, AttrWBRowV, 3 * sizeof(*AttrWBV));
+			memcpy(AttrWCV, AttrWCRowV, 3 * sizeof(*AttrWCV));
+
+
 			__m128i *Pixels = (__m128i *)Row;
 			fxd_24_8 X = MinX;
 			for(; X < (((MaxX - MinX) & ModuloMask) + MinX); X += 4 * FXD_ONE){
+				__m128 fColorV[3];
+				fColorV[0] = _mm_add_ps(AttrWAV[0], AttrWBV[0]);
+				fColorV[0] = _mm_add_ps(fColorV[0], AttrWCV[0]);
+
+				fColorV[1] = _mm_add_ps(AttrWAV[1], AttrWBV[1]);
+				fColorV[1] = _mm_add_ps(fColorV[1], AttrWCV[1]);
+
+				fColorV[2] = _mm_add_ps(AttrWAV[2], AttrWBV[2]);
+				fColorV[2] = _mm_add_ps(fColorV[2], AttrWCV[2]);
+
+				__m128i AttrColorV = Float3ToARGBSSE(fColorV);
+
+
 				__m128i Mask = _mm_or_si128(W0V, W1V);
 				Mask = _mm_or_si128(W2V, Mask);
 				__m128i PixelV = _mm_lddqu_si128(Pixels);
 				__m128i MaskLt = _mm_cmplt_epi32(Mask, _mm_setzero_si128());
-				__m128i Tmp = _mm_blendv_epi8(ColorV, PixelV, MaskLt);
+				__m128i Tmp = _mm_blendv_epi8(AttrColorV, PixelV, MaskLt);
 				_mm_storeu_si128(Pixels, Tmp);
 				Pixels++;
 
@@ -451,28 +597,97 @@
 				W1V = _mm_add_epi32(Inc1V, W1V);
 				W2V = _mm_add_epi32(Inc2V, W2V);
 
+				AttrWAV[0] = _mm_add_ps(AttrWAV[0], AttrAIncV[0]);
+				AttrWAV[1] = _mm_add_ps(AttrWAV[1], AttrAIncV[1]);
+				AttrWAV[2] = _mm_add_ps(AttrWAV[2], AttrAIncV[2]);
+
+				AttrWBV[0] = _mm_add_ps(AttrWBV[0], AttrBIncV[0]);
+				AttrWBV[1] = _mm_add_ps(AttrWBV[1], AttrBIncV[1]);
+				AttrWBV[2] = _mm_add_ps(AttrWBV[2], AttrBIncV[2]);
+
+				AttrWCV[0] = _mm_add_ps(AttrWCV[0], AttrCIncV[0]);
+				AttrWCV[1] = _mm_add_ps(AttrWCV[1], AttrCIncV[1]);
+				AttrWCV[2] = _mm_add_ps(AttrWCV[2], AttrCIncV[2]);
 			}
 
 			unsigned *Pixel = (unsigned *)Pixels;
 			fxd_24_8 W0 = _mm_cvtsi128_si32(W0V);
 			fxd_24_8 W1 = _mm_cvtsi128_si32(W1V);
 			fxd_24_8 W2 = _mm_cvtsi128_si32(W2V);
-			while(X <= MaxX){
 
+			float AttrWA[3], AttrWB[3], AttrWC[3];
+			AttrWA[0] = _mm_cvtss_f32(AttrWAV[0]);
+			AttrWA[1] = _mm_cvtss_f32(AttrWAV[1]);
+			AttrWA[2] = _mm_cvtss_f32(AttrWAV[2]);
+
+			AttrWB[0] = _mm_cvtss_f32(AttrWBV[0]);
+			AttrWB[1] = _mm_cvtss_f32(AttrWBV[1]);
+			AttrWB[2] = _mm_cvtss_f32(AttrWBV[2]);
+
+			AttrWC[0] = _mm_cvtss_f32(AttrWCV[0]);
+			AttrWC[1] = _mm_cvtss_f32(AttrWCV[1]);
+			AttrWC[2] = _mm_cvtss_f32(AttrWCV[2]);
+
+			float AttrAInc[3], AttrBInc[3], AttrCInc[3];
+			AttrAInc[0] = _mm_cvtss_f32(AttrAIncV[0]);
+			AttrAInc[1] = _mm_cvtss_f32(AttrAIncV[1]);
+			AttrAInc[2] = _mm_cvtss_f32(AttrAIncV[2]);
+
+			AttrBInc[0] = _mm_cvtss_f32(AttrBIncV[0]);
+			AttrBInc[1] = _mm_cvtss_f32(AttrBIncV[1]);
+			AttrBInc[2] = _mm_cvtss_f32(AttrBIncV[2]);
+			
+			AttrCInc[0] = _mm_cvtss_f32(AttrCIncV[0]);
+			AttrCInc[1] = _mm_cvtss_f32(AttrCIncV[1]);
+			AttrCInc[2] = _mm_cvtss_f32(AttrCIncV[2]);
+
+
+			while(X <= MaxX){
 				unsigned tmp = *Pixel;
-				tmp = ((W0 | W1 | W2) >= 0) ? Color : tmp;
+
+				float fColor[3] = {0};
+				fColor[0] = AttrWA[0] + AttrWB[0] + AttrWC[0];
+				fColor[1] = AttrWA[1] + AttrWB[1] + AttrWC[1];
+				fColor[2] = AttrWA[2] + AttrWB[2] + AttrWC[2];
+
+
+				unsigned AttrColor = Float3ToARGB(fColor);
+
+				tmp = ((W0 | W1 | W2) >= 0) ? AttrColor : tmp;
 				*Pixel++ = tmp;
 				W0 += Inc0;
 				W1 += Inc1;
 				W2 += Inc2;
 
+				AttrWA[0] += AttrAInc[0];
+				AttrWA[1] += AttrAInc[1];
+				AttrWA[2] += AttrAInc[2];
+
+				AttrWB[0] += AttrBInc[0];
+				AttrWB[1] += AttrBInc[1];
+				AttrWB[2] += AttrBInc[2];
+				
+				AttrWC[0] += AttrCInc[0];
+				AttrWC[1] += AttrCInc[1];
+				AttrWC[2] += AttrCInc[2];
+
 				X += FXD_ONE;
 			}
 
 			Row += Buffer->Width;
-			W0Row = _mm_add_epi32(RowInc0V, W0Row);
-			W1Row = _mm_add_epi32(RowInc1V, W1Row);
-			W2Row = _mm_add_epi32(RowInc2V, W2Row);
+			W0RowV = _mm_add_epi32(RowInc0V, W0RowV);
+			W1RowV = _mm_add_epi32(RowInc1V, W1RowV);
+			W2RowV = _mm_add_epi32(RowInc2V, W2RowV);
+
+			AttrWARowV[0] = _mm_add_ps(AttrWARowV[0],AttrARowIncV[0]);
+			AttrWARowV[1] = _mm_add_ps(AttrWARowV[1],AttrARowIncV[1]);
+			AttrWARowV[2] = _mm_add_ps(AttrWARowV[2],AttrARowIncV[2]);
+			AttrWBRowV[0] = _mm_add_ps(AttrWBRowV[0],AttrBRowIncV[0]);
+			AttrWBRowV[1] = _mm_add_ps(AttrWBRowV[1],AttrBRowIncV[1]);
+			AttrWBRowV[2] = _mm_add_ps(AttrWBRowV[2],AttrBRowIncV[2]);
+			AttrWCRowV[0] = _mm_add_ps(AttrWCRowV[0],AttrCRowIncV[0]);
+			AttrWCRowV[1] = _mm_add_ps(AttrWCRowV[1],AttrCRowIncV[1]);
+			AttrWCRowV[2] = _mm_add_ps(AttrWCRowV[2],AttrCRowIncV[2]);
 		}
 	}
 
@@ -600,6 +815,4 @@
 			W1Row = _mm256_add_epi32(RowInc1V, W1Row);
 			W2Row = _mm256_add_epi32(RowInc2V, W2Row);
 		}
-
-
 	}

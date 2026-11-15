@@ -17,8 +17,11 @@ internal int FxdToIntR(fxd_24_8 n); //Round
 internal int FxdToIntF(fxd_24_8 n); //Floor
 internal inline fxd_24_8 FloatToFxd(float n);
 internal inline float FxdToFloat(fxd_24_8 n);
+internal inline __m128 Fxd4ToFloat(__m128i v);
 internal inline fxd_24_8 DToSFxd(fxd_48_16 N);
 internal inline fxd_48_16 SToDFxd(fxd_24_8 N);
+
+
 
 //Printing
 internal void fxd_FormatFxd(fxd_24_8 n, char* String, size_t Size);
@@ -85,6 +88,15 @@ internal inline float FxdToFloat(fxd_24_8 n){
 	Result += ((float)((n & FXD_FRAC_MAX)) / (float)FXD_ONE);
 	return Result;
 }
+internal inline __m128 Fxd4ToFloat(__m128i v){
+	__m128i iInt = _mm_srai_epi32(v, FRACTION_BITS);
+	__m128i iFrac = _mm_and_epi32(v, _mm_set1_epi32(FXD_FRAC_MAX));
+	__m128 fInt  = _mm_cvtepi32_ps(iInt);
+	__m128 fFrac = _mm_cvtepi32_ps(iFrac);
+	fFrac = _mm_div_ps(fFrac, _mm_set1_ps((float)FXD_ONE));
+	return _mm_add_ps(fInt, fFrac);
+}
+
 internal inline fxd_24_8 DToSFxd(fxd_48_16 N){
 	return (fxd_24_8)((N >> FRACTION_BITS) & 0xffffffff);
 }

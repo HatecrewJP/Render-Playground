@@ -84,14 +84,14 @@ internal void fxd_DrawQuad(IScreenBuffer *Buffer,
 }
 
 internal void fxd_DrawQuadSSE(IScreenBuffer *Buffer,
-	fxd_24_8 X1, fxd_24_8 Y1,
-	fxd_24_8 X2, fxd_24_8 Y2,
-	fxd_24_8 X3, fxd_24_8 Y3,
-	fxd_24_8 X4, fxd_24_8 Y4,
+	fxd_24_8 X1, fxd_24_8 Y1, float Attr1[3],
+	fxd_24_8 X2, fxd_24_8 Y2, float Attr2[3],
+	fxd_24_8 X3, fxd_24_8 Y3, float Attr3[3],
+	fxd_24_8 X4, fxd_24_8 Y4, float Attr4[3],
 	unsigned Color){
 	//Diagonal is 2-4
-	fxd_RasterizeTriSSE(Buffer, X1, Y1, X2, Y2, X4, Y4, Color);
-	fxd_RasterizeTriSSE(Buffer, X2, Y2, X3, Y3, X4, Y4, Color);
+	fxd_RasterizeTriSSE(Buffer, X1, Y1, Attr1, X2, Y2, Attr2, X4, Y4, Attr4, Color);
+	fxd_RasterizeTriSSE(Buffer, X2, Y2, Attr2, X3, Y3, Attr3, X4, Y4, Attr4, Color);
 }
 
 internal void fxd_DrawQuadAVX(IScreenBuffer *Buffer,
@@ -323,15 +323,11 @@ RENDER_FRAME(RenderFrame){
 	NY4 = RB * X4 + RD * Y4;
 
 
-	//NX1 *= 2; NY1 *= 2;
-	//NX2 *= 2; NY2 *= 2;
-	//NX3 *= 2; NY3 *= 2;
-	//NX4 *= 2; NY4 *= 2;
+	NX1 *= 2; NY1 *= 2;
+	NX2 *= 2; NY2 *= 2;
+	NX3 *= 2; NY3 *= 2;
+	NX4 *= 2; NY4 *= 2;
 
-	
-	
-	
-	
 
 	NX1 = NX1 + X;
 	NX2 = NX2 + X;
@@ -352,12 +348,14 @@ RENDER_FRAME(RenderFrame){
 	//fxd_24_8 fxd_X2 = FloatToFxd(0.5f); fxd_24_8 fxd_Y2 = FloatToFxd(9.5f);
 	//fxd_24_8 fxd_X3 = FloatToFxd(9.5f); fxd_24_8 fxd_Y3 = FloatToFxd(9.5f);
 	//fxd_24_8 fxd_X4 = FloatToFxd(9.5f); fxd_24_8 fxd_Y4 = FloatToFxd(0.5f);
+	
+	
 	fxd_24_8 fxd_X5 = FloatToFxd(0.5f); fxd_24_8 fxd_Y5 = FloatToFxd(18.5f);
 	fxd_24_8 fxd_X6 = FloatToFxd(9.5f); fxd_24_8 fxd_Y6 = FloatToFxd(18.5f);
 
 	
 
-	float Color1[3] = {0.0f, 255.0f, 255.0f};
+	float Color1[3] = {255.0f, 0.0f, 0.0f};
 	float Color2[3] = {0.0f, 255.0f,   0.0f};
 	float Color3[3] = {0.0f, 255.0f, 255.0f};
 	float Color4[3] = {0.0f, 0.0f,   255.0f};
@@ -373,42 +371,26 @@ RENDER_FRAME(RenderFrame){
 
 	long long TS1, TS2;
 	float TimeElapsed;
-	/*TS1 = DebugCTX->GetTime();
-	fxd_DrawQuadSSE(Buffer, fxd_X1, fxd_Y1, fxd_X2, fxd_Y2, fxd_X3, fxd_Y3, fxd_X4, fxd_Y4, 0xffff0000);
+
+	
+
+
+
+	//TS1 = DebugCTX->GetTime();
+	//fxd_DrawQuad(Buffer, fxd_X1, fxd_Y1, Color1,  fxd_X2, fxd_Y2, Color2, fxd_X3, fxd_Y3, Color3, fxd_X4, fxd_Y4, Color4, 0xffffffff);
+	//TS2 = DebugCTX->GetTime();
+	//TimeElapsed = (float)((TS2 - TS1) * 1000) / (float)DebugCTX->PerfCountFrequency;
+	//printf("Scalar Quad: %f ms\n", TimeElapsed);
+
+	TS1 = DebugCTX->GetTime();
+	fxd_DrawQuadSSE(Buffer, fxd_X1, fxd_Y1, Color1, fxd_X2, fxd_Y2, Color2, fxd_X3, fxd_Y3, Color3, fxd_X4, fxd_Y4, Color4, 0xffff0000);
 	TS2 = DebugCTX->GetTime();
-	float TimeElapsed = (float)((TS2 - TS1) * 1000) / (float)DebugCTX->PerfCountFrequency;
+	TimeElapsed = (float)((TS2 - TS1) * 1000) / (float)DebugCTX->PerfCountFrequency;
 	printf("SSE Quad: %f ms\n", TimeElapsed);
 
-	TS1 = DebugCTX->GetTime();
-	fxd_DrawQuadAVX(Buffer, fxd_X1, fxd_Y1, fxd_X2, fxd_Y2, fxd_X3, fxd_Y3, fxd_X4, fxd_Y4, 0xff0000ff);
-	TS2 = DebugCTX->GetTime();
-	TimeElapsed = (float)((TS2 - TS1) * 1000) / (float)DebugCTX->PerfCountFrequency;
-	printf("AVX Quad: %f ms\n", TimeElapsed);*/
 
 
-	TS1 = DebugCTX->GetTime();
-	fxd_RasterizeTri(Buffer, fxd_X1, fxd_Y1, Color1,  fxd_X2, fxd_Y2, Color2, fxd_X4, fxd_Y4, Color4, 0xffffffff);
-	fxd_RasterizeTri(Buffer, fxd_X2, fxd_Y2, Color2,  fxd_X3, fxd_Y3, Color3, fxd_X4, fxd_Y4, Color4, 0xffffffff);
-	TS2 = DebugCTX->GetTime();
-	TimeElapsed = (float)((TS2 - TS1) * 1000) / (float)DebugCTX->PerfCountFrequency;
-	printf("Scalar Quad: %f ms\n", TimeElapsed);
-
-	//fxd_RasterizeTri(Buffer, fxd_X1, fxd_Y1, fxd_X2, fxd_Y2, fxd_X3, fxd_Y3, 0xffff0000);
-	//fxd_DrawQuad(Buffer, fxd_X1, fxd_Y1, fxd_X2, fxd_Y2, fxd_X3, fxd_Y3, fxd_X4, fxd_Y4, 0xffff0000);
-	//fxd_DrawQuadOutline(Buffer, fxd_X1, fxd_Y1, fxd_X2, fxd_Y2, fxd_X3, fxd_Y3, fxd_X4, fxd_Y4, 0xffffffff);
-	
-	//fxd_TriHalfPlanes(Buffer, fxd_X1, fxd_Y1, fxd_X2, fxd_Y2, fxd_X3, fxd_Y3);
 	printf("\n");
-	
-
-	//Angle += PI / 360;
-
-
-	
-
-
-
-
-
+	Angle += PI / 360;
 
 }
