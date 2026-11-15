@@ -18,6 +18,7 @@ internal int FxdToIntF(fxd_24_8 n); //Floor
 internal inline fxd_24_8 FloatToFxd(float n);
 internal inline float FxdToFloat(fxd_24_8 n);
 internal inline __m128 Fxd4ToFloat(__m128i v);
+internal inline __m256 Fxd8ToFloat(__m256i v);
 internal inline fxd_24_8 DToSFxd(fxd_48_16 N);
 internal inline fxd_48_16 SToDFxd(fxd_24_8 N);
 
@@ -95,6 +96,15 @@ internal inline __m128 Fxd4ToFloat(__m128i v){
 	__m128 fFrac = _mm_cvtepi32_ps(iFrac);
 	fFrac = _mm_div_ps(fFrac, _mm_set1_ps((float)FXD_ONE));
 	return _mm_add_ps(fInt, fFrac);
+}
+
+internal inline __m256 Fxd8ToFloat(__m256i v){
+	__m256i iInt = _mm256_srai_epi32(v, FRACTION_BITS);
+	__m256i iFrac = _mm256_and_epi32(v, _mm256_set1_epi32(FXD_FRAC_MAX));
+	__m256 fInt  = _mm256_cvtepi32_ps(iInt);
+	__m256 fFrac = _mm256_cvtepi32_ps(iFrac);
+	fFrac = _mm256_div_ps(fFrac, _mm256_set1_ps((float)FXD_ONE));
+	return _mm256_add_ps(fInt, fFrac);
 }
 
 internal inline fxd_24_8 DToSFxd(fxd_48_16 N){

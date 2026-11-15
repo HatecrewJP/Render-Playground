@@ -185,7 +185,9 @@ internal void fxd_BresenhamLine(IScreenBuffer *Buffer,
 		int inc = 0;
 
 		for(int i = 0; i < IterationCount; i++){
-			*Pixels = Color;
+			if(Pixels >= Buffer->Data && Pixels <= (Buffer->Data + (Buffer->Width * Buffer->Height))){
+				*Pixels = Color;
+			}
 			Pixels += (D > 0) ? (XInc + Pitch) : XInc;
 			D += (D > 0) ? dInc2 : dInc1;
 		}
@@ -208,7 +210,9 @@ internal void fxd_BresenhamLine(IScreenBuffer *Buffer,
 		int Pitch = Buffer->Width * YInc;
 		int inc = 0;
 		for(int i = 0; i < IterationCount; i++){
-			*Pixels = Color;
+			if(Pixels >= Buffer->Data && Pixels <= (Buffer->Data + (Buffer->Width * Buffer->Height))){
+				*Pixels = Color;
+			}
 			Pixels += (D < 0) ? (XInc + Pitch): Pitch;
 			D += (D < 0) ? dInc2 : dInc1;
 		}
@@ -246,7 +250,9 @@ internal void fxd_BresenhamLine2(IScreenBuffer *Buffer,
 		int inc = 0;
 
 		for(int i = 0; i <= IterationCount; i++){
-			*Pixels = Color;
+			if(Pixels >= Buffer->Data && Pixels <= (Buffer->Data + (Buffer->Width * Buffer->Height))){
+				*Pixels = Color;
+			}
 			Pixels += (D > 0) ? (XInc + Pitch) : XInc;
 			D += (D > 0) ? dInc2 : dInc1;
 		}
@@ -269,7 +275,9 @@ internal void fxd_BresenhamLine2(IScreenBuffer *Buffer,
 		int Pitch = Buffer->Width * YInc;
 		int inc = 0;
 		for(int i = 0; i <= IterationCount; i++){
-			*Pixels = Color;
+			if(Pixels >= Buffer->Data && Pixels <= (Buffer->Data + (Buffer->Width * Buffer->Height))){
+				*Pixels = Color;
+			}
 			Pixels += (D < 0) ? (XInc + Pitch) : Pitch;
 			D += (D < 0) ? dInc2 : dInc1;
 		}
