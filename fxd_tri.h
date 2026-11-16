@@ -51,10 +51,10 @@ internal bool fxd_TestTopLeftRule(fxd_24_8 AX, fxd_24_8 AY, fxd_24_8 BX, fxd_24_
 
 
 internal void fxd_RasterizeTri(IScreenBuffer *Buffer,
-	fxd_24_8 _AX, fxd_24_8 _AY, float _AttrA[3],
-	fxd_24_8 _BX, fxd_24_8 _BY, float _AttrB[3],
-	fxd_24_8 _CX, fxd_24_8 _CY, float _AttrC[3])
-{
+	fxd_24_8 _AX, fxd_24_8 _AY, float *_AttrA,
+	fxd_24_8 _BX, fxd_24_8 _BY, float *_AttrB,
+	fxd_24_8 _CX, fxd_24_8 _CY, float *_AttrC
+){
 	//Based on https://fgiesen.wordpress.com/2013/02/08/triangle-rasterization-in-practice/
 	//Input is Y-Down Counter-Clockwise tri. But the math is for Y-Up coordinate systems
 	//Change the orientation by swapping the order of the second and third vertex
@@ -125,38 +125,49 @@ internal void fxd_RasterizeTri(IScreenBuffer *Buffer,
 	float AttrRowInc1 = FxdToFloat(RowInc1) / FxdToFloat(Area);
 	float AttrRowInc2 = FxdToFloat(RowInc2) / FxdToFloat(Area);
 
-	float AttrWARow[3] = {0}, AttrWBRow[3] = {0}, AttrWCRow[3] = {0};
+
+
+	float AttrWARow[4] = {0}, AttrWBRow[4] = {0}, AttrWCRow[4] = {0};
 	AttrWARow[0] = AttrA[0] * AttrW1Row;
 	AttrWARow[1] = AttrA[1] * AttrW1Row;
 	AttrWARow[2] = AttrA[2] * AttrW1Row;
+	AttrWARow[3] = AttrA[3] * AttrW1Row;
 	AttrWBRow[0] = AttrB[0] * AttrW2Row;
 	AttrWBRow[1] = AttrB[1] * AttrW2Row;
 	AttrWBRow[2] = AttrB[2] * AttrW2Row;
+	AttrWBRow[3] = AttrB[3] * AttrW2Row;
 	AttrWCRow[0] = AttrC[0] * AttrW0Row;
 	AttrWCRow[1] = AttrC[1] * AttrW0Row;
 	AttrWCRow[2] = AttrC[2] * AttrW0Row;
+	AttrWCRow[3] = AttrC[3] * AttrW0Row;
 
-	float AttrAInc[3], AttrBInc[3], AttrCInc[3];
+	float AttrAInc[4], AttrBInc[4], AttrCInc[4];
 	AttrAInc[0] = AttrA[0] * AttrInc1;
 	AttrAInc[1] = AttrA[1] * AttrInc1;
 	AttrAInc[2] = AttrA[2] * AttrInc1;
+	AttrAInc[3] = AttrA[3] * AttrInc1;
 	AttrBInc[0] = AttrB[0] * AttrInc2;
 	AttrBInc[1] = AttrB[1] * AttrInc2;
 	AttrBInc[2] = AttrB[2] * AttrInc2;
+	AttrBInc[3] = AttrB[3] * AttrInc2;
 	AttrCInc[0] = AttrC[0] * AttrInc0;
 	AttrCInc[1] = AttrC[1] * AttrInc0;
 	AttrCInc[2] = AttrC[2] * AttrInc0;
+	AttrCInc[3] = AttrC[3] * AttrInc0;
 
-	float AttrARowInc[3], AttrBRowInc[3], AttrCRowInc[3];
+	float AttrARowInc[4], AttrBRowInc[4], AttrCRowInc[4];
 	AttrARowInc[0] = AttrA[0] * AttrRowInc1;
 	AttrARowInc[1] = AttrA[1] * AttrRowInc1;
 	AttrARowInc[2] = AttrA[2] * AttrRowInc1;
+	AttrARowInc[3] = AttrA[3] * AttrRowInc1;
 	AttrBRowInc[0] = AttrB[0] * AttrRowInc2;
 	AttrBRowInc[1] = AttrB[1] * AttrRowInc2;
 	AttrBRowInc[2] = AttrB[2] * AttrRowInc2;
+	AttrBRowInc[3] = AttrB[3] * AttrRowInc2;
 	AttrCRowInc[0] = AttrC[0] * AttrRowInc0;
 	AttrCRowInc[1] = AttrC[1] * AttrRowInc0;
 	AttrCRowInc[2] = AttrC[2] * AttrRowInc0;
+	AttrCRowInc[3] = AttrC[3] * AttrRowInc0;
 
 	//Add Bias after calculating weights for correct Attribute Interpolation
 	W0Row += Bias0;
@@ -169,24 +180,25 @@ internal void fxd_RasterizeTri(IScreenBuffer *Buffer,
 		fxd_24_8 W1 = W1Row;
 		fxd_24_8 W2 = W2Row;
 
-		float AttrWA[3];
-		float AttrWB[3];
-		float AttrWC[3];
+		float AttrWA[4];
+		float AttrWB[4];
+		float AttrWC[4];
 
-		memcpy(AttrWA, AttrWARow, sizeof(*AttrWA) * 3);
-		memcpy(AttrWB, AttrWBRow, sizeof(*AttrWB) * 3);
-		memcpy(AttrWC, AttrWCRow, sizeof(*AttrWC) * 3);
+		memcpy(AttrWA, AttrWARow, sizeof(*AttrWA) * 4);
+		memcpy(AttrWB, AttrWBRow, sizeof(*AttrWB) * 4);
+		memcpy(AttrWC, AttrWCRow, sizeof(*AttrWC) * 4);
 
 		unsigned *Pixels = Row;
 		for(fxd_24_8 X = MinX; X <= MaxX; X += FXD_ONE){
 			unsigned Pixel = *Pixels;
 
-			float fColor[3] = {0};
+			float fColor[4] = {0};
 			fColor[0] = AttrWA[0] + AttrWB[0] + AttrWC[0];
 			fColor[1] = AttrWA[1] + AttrWB[1] + AttrWC[1];
 			fColor[2] = AttrWA[2] + AttrWB[2] + AttrWC[2];
+			fColor[3] = AttrWA[3] + AttrWB[3] + AttrWC[3];
 
-			unsigned AttrColor = Float3ToARGB(fColor);
+			unsigned AttrColor = Float4ToARGB(fColor);
 			
 			Pixel = ((W0 | W1 | W2) >= 0) ? AttrColor : Pixel;
 			*Pixels = Pixel;
@@ -197,12 +209,15 @@ internal void fxd_RasterizeTri(IScreenBuffer *Buffer,
 			AttrWA[0] += AttrAInc[0];
 			AttrWA[1] += AttrAInc[1];
 			AttrWA[2] += AttrAInc[2];
+			AttrWA[3] += AttrAInc[3];
 			AttrWB[0] += AttrBInc[0];
 			AttrWB[1] += AttrBInc[1];
 			AttrWB[2] += AttrBInc[2];
+			AttrWB[3] += AttrBInc[3];
 			AttrWC[0] += AttrCInc[0];
 			AttrWC[1] += AttrCInc[1];
 			AttrWC[2] += AttrCInc[2];
+			AttrWC[3] += AttrCInc[3];
 
 
 			Pixels++;
@@ -216,15 +231,20 @@ internal void fxd_RasterizeTri(IScreenBuffer *Buffer,
 		AttrWARow[0] += AttrARowInc[0];
 		AttrWARow[1] += AttrARowInc[1];
 		AttrWARow[2] += AttrARowInc[2];
+		AttrWARow[3] += AttrARowInc[3];
 		AttrWBRow[0] += AttrBRowInc[0];
 		AttrWBRow[1] += AttrBRowInc[1];
 		AttrWBRow[2] += AttrBRowInc[2];
+		AttrWBRow[3] += AttrBRowInc[3];
 		AttrWCRow[0] += AttrCRowInc[0];
 		AttrWCRow[1] += AttrCRowInc[1];
 		AttrWCRow[2] += AttrCRowInc[2];
+		AttrWCRow[3] += AttrCRowInc[3];
 
 	}
 }
+
+
 
 
 
@@ -325,10 +345,10 @@ internal void fxd_TriHalfPlanes(IScreenBuffer *Buffer,
 
 
 internal void fxd_RasterizeTriSSE(IScreenBuffer *Buffer,
-	fxd_24_8 _AX, fxd_24_8 _AY, float _AttrA[3],
-	fxd_24_8 _BX, fxd_24_8 _BY, float _AttrB[3],
-	fxd_24_8 _CX, fxd_24_8 _CY, float _AttrC[3],
-	unsigned Color){
+	fxd_24_8 _AX, fxd_24_8 _AY, float *_AttrA,
+	fxd_24_8 _BX, fxd_24_8 _BY, float *_AttrB,
+	fxd_24_8 _CX, fxd_24_8 _CY, float *_AttrC
+){
 	//Based on https://fgiesen.wordpress.com/2013/02/08/triangle-rasterization-in-practice/
 	//Input is Y-Down Counter-Clockwise tri. But the math is for Y-Up coordinate systems
 	//Change the orientation by swapping the order of the second and third vertex
@@ -341,18 +361,22 @@ internal void fxd_RasterizeTriSSE(IScreenBuffer *Buffer,
 	float *AttrB = _AttrC;
 	float *AttrC = _AttrB;
 
-	__m128 AttrAV[3], AttrBV[3],AttrCV[3];
+	__m128 AttrAV[4], AttrBV[4],AttrCV[4];
 	AttrAV[0] = _mm_set_ps1(AttrA[0]);
-	AttrBV[0] = _mm_set_ps1(AttrB[0]);
-	AttrCV[0] = _mm_set_ps1(AttrC[0]);
-
 	AttrAV[1] = _mm_set_ps1(AttrA[1]);
-	AttrBV[1] = _mm_set_ps1(AttrB[1]);
-	AttrCV[1] = _mm_set_ps1(AttrC[1]);
-	
 	AttrAV[2] = _mm_set_ps1(AttrA[2]);
+	AttrAV[3] = _mm_set_ps1(AttrA[3]);
+
+
+	AttrBV[0] = _mm_set_ps1(AttrB[0]);
+	AttrBV[1] = _mm_set_ps1(AttrB[1]);
 	AttrBV[2] = _mm_set_ps1(AttrB[2]);
+	AttrBV[3] = _mm_set_ps1(AttrB[3]);
+
+	AttrCV[0] = _mm_set_ps1(AttrC[0]);
+	AttrCV[1] = _mm_set_ps1(AttrC[1]);
 	AttrCV[2] = _mm_set_ps1(AttrC[2]);
+	AttrCV[3] = _mm_set_ps1(AttrC[3]);
 
 
 	int Area = fxd_TriOrientationS(AX, AY, BX, BY, CX, CY);
@@ -441,45 +465,54 @@ internal void fxd_RasterizeTriSSE(IScreenBuffer *Buffer,
 	__m128 AttrInc1V = _mm_set_ps1(4.0f * AttrInc1);
 	__m128 AttrInc2V = _mm_set_ps1(4.0f * AttrInc2);
 
-	__m128 AttrWARowV[3], AttrWBRowV[3], AttrWCRowV[3];
+	__m128 AttrWARowV[4], AttrWBRowV[4], AttrWCRowV[4];
 	AttrWARowV[0] = _mm_mul_ps(AttrAV[0], AttrW1RowV);
 	AttrWARowV[1] = _mm_mul_ps(AttrAV[1], AttrW1RowV);
 	AttrWARowV[2] = _mm_mul_ps(AttrAV[2], AttrW1RowV);
+	AttrWARowV[3] = _mm_mul_ps(AttrAV[3], AttrW1RowV);
 
 	AttrWBRowV[0] = _mm_mul_ps(AttrBV[0], AttrW2RowV);
 	AttrWBRowV[1] = _mm_mul_ps(AttrBV[1], AttrW2RowV);
 	AttrWBRowV[2] = _mm_mul_ps(AttrBV[2], AttrW2RowV);
+	AttrWBRowV[3] = _mm_mul_ps(AttrBV[3], AttrW2RowV);
 
 	AttrWCRowV[0] = _mm_mul_ps(AttrCV[0], AttrW0RowV);
 	AttrWCRowV[1] = _mm_mul_ps(AttrCV[1], AttrW0RowV);
 	AttrWCRowV[2] = _mm_mul_ps(AttrCV[2], AttrW0RowV);
+	AttrWCRowV[3] = _mm_mul_ps(AttrCV[3], AttrW0RowV);
 	
 
-	__m128 AttrAIncV[3], AttrBIncV[3], AttrCIncV[3];
+	__m128 AttrAIncV[4], AttrBIncV[4], AttrCIncV[4];
 	AttrAIncV[0] = _mm_mul_ps(AttrAV[0], AttrInc1V);
 	AttrAIncV[1] = _mm_mul_ps(AttrAV[1], AttrInc1V);
 	AttrAIncV[2] = _mm_mul_ps(AttrAV[2], AttrInc1V);
+	AttrAIncV[3] = _mm_mul_ps(AttrAV[3], AttrInc1V);
 
 	AttrBIncV[0] = _mm_mul_ps(AttrBV[0], AttrInc2V);
 	AttrBIncV[1] = _mm_mul_ps(AttrBV[1], AttrInc2V);
 	AttrBIncV[2] = _mm_mul_ps(AttrBV[2], AttrInc2V);
+	AttrBIncV[3] = _mm_mul_ps(AttrBV[3], AttrInc2V);
 
 	AttrCIncV[0] = _mm_mul_ps(AttrCV[0], AttrInc0V);
 	AttrCIncV[1] = _mm_mul_ps(AttrCV[1], AttrInc0V);
 	AttrCIncV[2] = _mm_mul_ps(AttrCV[2], AttrInc0V);
+	AttrCIncV[3] = _mm_mul_ps(AttrCV[3], AttrInc0V);
 
-	__m128 AttrARowIncV[3], AttrBRowIncV[3], AttrCRowIncV[3];
+	__m128 AttrARowIncV[4], AttrBRowIncV[4], AttrCRowIncV[4];
 	AttrARowIncV[0] = _mm_mul_ps(AttrAV[0], AttrRowInc1V);
 	AttrARowIncV[1] = _mm_mul_ps(AttrAV[1], AttrRowInc1V);
 	AttrARowIncV[2] = _mm_mul_ps(AttrAV[2], AttrRowInc1V);
+	AttrARowIncV[3] = _mm_mul_ps(AttrAV[3], AttrRowInc1V);
 
 	AttrBRowIncV[0] = _mm_mul_ps(AttrBV[0], AttrRowInc2V);
 	AttrBRowIncV[1] = _mm_mul_ps(AttrBV[1], AttrRowInc2V);
 	AttrBRowIncV[2] = _mm_mul_ps(AttrBV[2], AttrRowInc2V);
+	AttrBRowIncV[3] = _mm_mul_ps(AttrBV[3], AttrRowInc2V);
 
 	AttrCRowIncV[0] = _mm_mul_ps(AttrCV[0], AttrRowInc0V);
 	AttrCRowIncV[1] = _mm_mul_ps(AttrCV[1], AttrRowInc0V);
 	AttrCRowIncV[2] = _mm_mul_ps(AttrCV[2], AttrRowInc0V);
+	AttrCRowIncV[3] = _mm_mul_ps(AttrCV[3], AttrRowInc0V);
 
 
 	//Add Top Left Rule Bias after Attribute Setup for correct attribute interpolation
@@ -490,25 +523,25 @@ internal void fxd_RasterizeTriSSE(IScreenBuffer *Buffer,
 	unsigned *Row = (Buffer->Data + FxdToIntF(PY) * Buffer->Width + FxdToIntF(PX));
 
 	fxd_24_8 ModuloMask = ~(4 * FXD_ONE - 1);
-	__m128i ColorV = _mm_set1_epi32(Color);
+
 	for(fxd_24_8 Y = MinY; Y <= MaxY; Y += FXD_ONE){
 		__m128i W0V = W0RowV;
 		__m128i W1V = W1RowV;
 		__m128i W2V = W2RowV;
 
-		__m128 AttrWAV[3]; 
-		__m128 AttrWBV[3]; 
-		__m128 AttrWCV[3];
+		__m128 AttrWAV[4]; 
+		__m128 AttrWBV[4]; 
+		__m128 AttrWCV[4];
 
-		memcpy(AttrWAV, AttrWARowV, 3 * sizeof(*AttrWAV));
-		memcpy(AttrWBV, AttrWBRowV, 3 * sizeof(*AttrWBV));
-		memcpy(AttrWCV, AttrWCRowV, 3 * sizeof(*AttrWCV));
+		memcpy(AttrWAV, AttrWARowV, 4 * sizeof(*AttrWAV));
+		memcpy(AttrWBV, AttrWBRowV, 4 * sizeof(*AttrWBV));
+		memcpy(AttrWCV, AttrWCRowV, 4 * sizeof(*AttrWCV));
 
 
 		__m128i *Pixels = (__m128i *)Row;
 		fxd_24_8 X = MinX;
 		for(; X < (((MaxX - MinX) & ModuloMask) + MinX); X += 4 * FXD_ONE){
-			__m128 fColorV[3];
+			__m128 fColorV[4];
 			fColorV[0] = _mm_add_ps(AttrWAV[0], AttrWBV[0]);
 			fColorV[0] = _mm_add_ps(fColorV[0], AttrWCV[0]);
 
@@ -518,7 +551,10 @@ internal void fxd_RasterizeTriSSE(IScreenBuffer *Buffer,
 			fColorV[2] = _mm_add_ps(AttrWAV[2], AttrWBV[2]);
 			fColorV[2] = _mm_add_ps(fColorV[2], AttrWCV[2]);
 
-			__m128i AttrColorV = Float3ToARGBSSE(fColorV);
+			fColorV[3] = _mm_add_ps(AttrWAV[3], AttrWBV[3]);
+			fColorV[3] = _mm_add_ps(fColorV[3], AttrWCV[3]);
+
+			__m128i AttrColorV = Float4ToARGBSSE(fColorV);
 
 
 			__m128i Mask = _mm_or_si128(W0V, W1V);
@@ -536,14 +572,17 @@ internal void fxd_RasterizeTriSSE(IScreenBuffer *Buffer,
 			AttrWAV[0] = _mm_add_ps(AttrWAV[0], AttrAIncV[0]);
 			AttrWAV[1] = _mm_add_ps(AttrWAV[1], AttrAIncV[1]);
 			AttrWAV[2] = _mm_add_ps(AttrWAV[2], AttrAIncV[2]);
+			AttrWAV[3] = _mm_add_ps(AttrWAV[3], AttrAIncV[3]);
 
 			AttrWBV[0] = _mm_add_ps(AttrWBV[0], AttrBIncV[0]);
 			AttrWBV[1] = _mm_add_ps(AttrWBV[1], AttrBIncV[1]);
 			AttrWBV[2] = _mm_add_ps(AttrWBV[2], AttrBIncV[2]);
+			AttrWBV[3] = _mm_add_ps(AttrWBV[3], AttrBIncV[3]);
 
 			AttrWCV[0] = _mm_add_ps(AttrWCV[0], AttrCIncV[0]);
 			AttrWCV[1] = _mm_add_ps(AttrWCV[1], AttrCIncV[1]);
 			AttrWCV[2] = _mm_add_ps(AttrWCV[2], AttrCIncV[2]);
+			AttrWCV[3] = _mm_add_ps(AttrWCV[3], AttrCIncV[3]);
 		}
 
 		unsigned *Pixel = (unsigned *)Pixels;
@@ -551,43 +590,50 @@ internal void fxd_RasterizeTriSSE(IScreenBuffer *Buffer,
 		fxd_24_8 W1 = _mm_cvtsi128_si32(W1V);
 		fxd_24_8 W2 = _mm_cvtsi128_si32(W2V);
 
-		float AttrWA[3], AttrWB[3], AttrWC[3];
+		float AttrWA[4], AttrWB[4], AttrWC[4];
 		AttrWA[0] = _mm_cvtss_f32(AttrWAV[0]);
 		AttrWA[1] = _mm_cvtss_f32(AttrWAV[1]);
 		AttrWA[2] = _mm_cvtss_f32(AttrWAV[2]);
+		AttrWA[3] = _mm_cvtss_f32(AttrWAV[3]);
 
 		AttrWB[0] = _mm_cvtss_f32(AttrWBV[0]);
 		AttrWB[1] = _mm_cvtss_f32(AttrWBV[1]);
 		AttrWB[2] = _mm_cvtss_f32(AttrWBV[2]);
+		AttrWB[3] = _mm_cvtss_f32(AttrWBV[3]);
 
 		AttrWC[0] = _mm_cvtss_f32(AttrWCV[0]);
 		AttrWC[1] = _mm_cvtss_f32(AttrWCV[1]);
 		AttrWC[2] = _mm_cvtss_f32(AttrWCV[2]);
+		AttrWC[3] = _mm_cvtss_f32(AttrWCV[3]);
 
-		float AttrAInc[3], AttrBInc[3], AttrCInc[3];
-		AttrAInc[0] = _mm_cvtss_f32(AttrAIncV[0]);
-		AttrAInc[1] = _mm_cvtss_f32(AttrAIncV[1]);
-		AttrAInc[2] = _mm_cvtss_f32(AttrAIncV[2]);
+		float AttrAInc[4], AttrBInc[4], AttrCInc[4];
+		AttrAInc[0] = _mm_cvtss_f32(AttrAIncV[0]) / 4.0f;
+		AttrAInc[1] = _mm_cvtss_f32(AttrAIncV[1]) / 4.0f;
+		AttrAInc[2] = _mm_cvtss_f32(AttrAIncV[2]) / 4.0f;
+		AttrAInc[3] = _mm_cvtss_f32(AttrAIncV[3]) / 4.0f;
 
-		AttrBInc[0] = _mm_cvtss_f32(AttrBIncV[0]);
-		AttrBInc[1] = _mm_cvtss_f32(AttrBIncV[1]);
-		AttrBInc[2] = _mm_cvtss_f32(AttrBIncV[2]);
+		AttrBInc[0] = _mm_cvtss_f32(AttrBIncV[0]) / 4.0f;
+		AttrBInc[1] = _mm_cvtss_f32(AttrBIncV[1]) / 4.0f;
+		AttrBInc[2] = _mm_cvtss_f32(AttrBIncV[2]) / 4.0f;
+		AttrBInc[3] = _mm_cvtss_f32(AttrBIncV[3]) / 4.0f;
 		
-		AttrCInc[0] = _mm_cvtss_f32(AttrCIncV[0]);
-		AttrCInc[1] = _mm_cvtss_f32(AttrCIncV[1]);
-		AttrCInc[2] = _mm_cvtss_f32(AttrCIncV[2]);
+		AttrCInc[0] = _mm_cvtss_f32(AttrCIncV[0]) / 4.0f;
+		AttrCInc[1] = _mm_cvtss_f32(AttrCIncV[1]) / 4.0f;
+		AttrCInc[2] = _mm_cvtss_f32(AttrCIncV[2]) / 4.0f;
+		AttrCInc[3] = _mm_cvtss_f32(AttrCIncV[3]) / 4.0f;
 
 
 		while(X <= MaxX){
 			unsigned tmp = *Pixel;
 
-			float fColor[3] = {0};
+			float fColor[4] = {0};
 			fColor[0] = AttrWA[0] + AttrWB[0] + AttrWC[0];
 			fColor[1] = AttrWA[1] + AttrWB[1] + AttrWC[1];
 			fColor[2] = AttrWA[2] + AttrWB[2] + AttrWC[2];
+			fColor[3] = AttrWA[3] + AttrWB[3] + AttrWC[3];
 
 
-			unsigned AttrColor = Float3ToARGB(fColor);
+			unsigned AttrColor = Float4ToARGB(fColor);
 
 			tmp = ((W0 | W1 | W2) >= 0) ? AttrColor : tmp;
 			*Pixel++ = tmp;
@@ -598,14 +644,17 @@ internal void fxd_RasterizeTriSSE(IScreenBuffer *Buffer,
 			AttrWA[0] += AttrAInc[0];
 			AttrWA[1] += AttrAInc[1];
 			AttrWA[2] += AttrAInc[2];
+			AttrWA[3] += AttrAInc[3];
 
 			AttrWB[0] += AttrBInc[0];
 			AttrWB[1] += AttrBInc[1];
 			AttrWB[2] += AttrBInc[2];
+			AttrWB[3] += AttrBInc[3];
 			
 			AttrWC[0] += AttrCInc[0];
 			AttrWC[1] += AttrCInc[1];
 			AttrWC[2] += AttrCInc[2];
+			AttrWC[3] += AttrCInc[3];
 
 			X += FXD_ONE;
 		}
@@ -618,24 +667,27 @@ internal void fxd_RasterizeTriSSE(IScreenBuffer *Buffer,
 		AttrWARowV[0] = _mm_add_ps(AttrWARowV[0],AttrARowIncV[0]);
 		AttrWARowV[1] = _mm_add_ps(AttrWARowV[1],AttrARowIncV[1]);
 		AttrWARowV[2] = _mm_add_ps(AttrWARowV[2],AttrARowIncV[2]);
+		AttrWARowV[3] = _mm_add_ps(AttrWARowV[3],AttrARowIncV[3]);
 
 		AttrWBRowV[0] = _mm_add_ps(AttrWBRowV[0],AttrBRowIncV[0]);
 		AttrWBRowV[1] = _mm_add_ps(AttrWBRowV[1],AttrBRowIncV[1]);
 		AttrWBRowV[2] = _mm_add_ps(AttrWBRowV[2],AttrBRowIncV[2]);
+		AttrWBRowV[3] = _mm_add_ps(AttrWBRowV[3],AttrBRowIncV[3]);
 		
 		AttrWCRowV[0] = _mm_add_ps(AttrWCRowV[0],AttrCRowIncV[0]);
 		AttrWCRowV[1] = _mm_add_ps(AttrWCRowV[1],AttrCRowIncV[1]);
 		AttrWCRowV[2] = _mm_add_ps(AttrWCRowV[2],AttrCRowIncV[2]);
+		AttrWCRowV[3] = _mm_add_ps(AttrWCRowV[3],AttrCRowIncV[3]);
 	}
 }
 
 
 
+
 internal void fxd_RasterizeTriAVX(IScreenBuffer *Buffer,
-	fxd_24_8 _AX, fxd_24_8 _AY, float _AttrA[3],
-	fxd_24_8 _BX, fxd_24_8 _BY, float _AttrB[3],
-	fxd_24_8 _CX, fxd_24_8 _CY, float _AttrC[3])
-{
+	fxd_24_8 _AX, fxd_24_8 _AY, float *_AttrA,
+	fxd_24_8 _BX, fxd_24_8 _BY, float *_AttrB,
+	fxd_24_8 _CX, fxd_24_8 _CY, float *_AttrC){
 
 	//Based on https://fgiesen.wordpress.com/2013/02/08/triangle-rasterization-in-practice/
 	//Input is Y-Down Counter-Clockwise tri. But the math is for Y-Up coordinate systems
@@ -649,18 +701,21 @@ internal void fxd_RasterizeTriAVX(IScreenBuffer *Buffer,
 	float *AttrB = _AttrC;
 	float *AttrC = _AttrB;
 
-	__m256 AttrAV[3], AttrBV[3], AttrCV[3];
+	__m256 AttrAV[4], AttrBV[4], AttrCV[4];
 	AttrAV[0] = _mm256_set1_ps(AttrA[0]);
-	AttrBV[0] = _mm256_set1_ps(AttrB[0]);
-	AttrCV[0] = _mm256_set1_ps(AttrC[0]);
-
 	AttrAV[1] = _mm256_set1_ps(AttrA[1]);
-	AttrBV[1] = _mm256_set1_ps(AttrB[1]);
-	AttrCV[1] = _mm256_set1_ps(AttrC[1]);
-
 	AttrAV[2] = _mm256_set1_ps(AttrA[2]);
+	AttrAV[3] = _mm256_set1_ps(AttrA[3]);
+
+	AttrBV[0] = _mm256_set1_ps(AttrB[0]);
+	AttrBV[1] = _mm256_set1_ps(AttrB[1]);
 	AttrBV[2] = _mm256_set1_ps(AttrB[2]);
+	AttrBV[3] = _mm256_set1_ps(AttrB[3]);
+
+	AttrCV[0] = _mm256_set1_ps(AttrC[0]);
+	AttrCV[1] = _mm256_set1_ps(AttrC[1]);
 	AttrCV[2] = _mm256_set1_ps(AttrC[2]);
+	AttrCV[3] = _mm256_set1_ps(AttrC[3]);
 
 
 	int Area = fxd_TriOrientationS(AX, AY, BX, BY, CX, CY);
@@ -725,7 +780,7 @@ internal void fxd_RasterizeTriAVX(IScreenBuffer *Buffer,
 	W1RowV = _mm256_add_epi32(W1RowV, W1RowBias);
 	W2RowV = _mm256_add_epi32(W2RowV, W2RowBias);
 
-	
+
 	//Setup Attribute Interpolation
 	float AttrInc0 = FxdToFloat(Inc0) / FxdToFloat(Area);
 	float AttrInc1 = FxdToFloat(Inc1) / FxdToFloat(Area);
@@ -748,46 +803,55 @@ internal void fxd_RasterizeTriAVX(IScreenBuffer *Buffer,
 	__m256 AttrInc1V = _mm256_set1_ps(8.0f * AttrInc1);
 	__m256 AttrInc2V = _mm256_set1_ps(8.0f * AttrInc2);
 
-	__m256 AttrWARowV[3], AttrWBRowV[3], AttrWCRowV[3];
+	__m256 AttrWARowV[4], AttrWBRowV[4], AttrWCRowV[4];
 	AttrWARowV[0] = _mm256_mul_ps(AttrAV[0], AttrW1RowV);
 	AttrWARowV[1] = _mm256_mul_ps(AttrAV[1], AttrW1RowV);
 	AttrWARowV[2] = _mm256_mul_ps(AttrAV[2], AttrW1RowV);
+	AttrWARowV[3] = _mm256_mul_ps(AttrAV[3], AttrW1RowV);
 
 	AttrWBRowV[0] = _mm256_mul_ps(AttrBV[0], AttrW2RowV);
 	AttrWBRowV[1] = _mm256_mul_ps(AttrBV[1], AttrW2RowV);
 	AttrWBRowV[2] = _mm256_mul_ps(AttrBV[2], AttrW2RowV);
+	AttrWBRowV[3] = _mm256_mul_ps(AttrBV[3], AttrW2RowV);
 
 	AttrWCRowV[0] = _mm256_mul_ps(AttrCV[0], AttrW0RowV);
 	AttrWCRowV[1] = _mm256_mul_ps(AttrCV[1], AttrW0RowV);
 	AttrWCRowV[2] = _mm256_mul_ps(AttrCV[2], AttrW0RowV);
+	AttrWCRowV[3] = _mm256_mul_ps(AttrCV[3], AttrW0RowV);
 
 
-	__m256 AttrAIncV[3], AttrBIncV[3], AttrCIncV[3];
+	__m256 AttrAIncV[4], AttrBIncV[4], AttrCIncV[4];
 	AttrAIncV[0] = _mm256_mul_ps(AttrAV[0], AttrInc1V);
 	AttrAIncV[1] = _mm256_mul_ps(AttrAV[1], AttrInc1V);
 	AttrAIncV[2] = _mm256_mul_ps(AttrAV[2], AttrInc1V);
+	AttrAIncV[3] = _mm256_mul_ps(AttrAV[3], AttrInc1V);
 
 	AttrBIncV[0] = _mm256_mul_ps(AttrBV[0], AttrInc2V);
 	AttrBIncV[1] = _mm256_mul_ps(AttrBV[1], AttrInc2V);
 	AttrBIncV[2] = _mm256_mul_ps(AttrBV[2], AttrInc2V);
+	AttrBIncV[3] = _mm256_mul_ps(AttrBV[3], AttrInc2V);
 
 	AttrCIncV[0] = _mm256_mul_ps(AttrCV[0], AttrInc0V);
 	AttrCIncV[1] = _mm256_mul_ps(AttrCV[1], AttrInc0V);
 	AttrCIncV[2] = _mm256_mul_ps(AttrCV[2], AttrInc0V);
+	AttrCIncV[3] = _mm256_mul_ps(AttrCV[3], AttrInc0V);
 
-	__m256 AttrARowIncV[3], AttrBRowIncV[3], AttrCRowIncV[3];
+	__m256 AttrARowIncV[4], AttrBRowIncV[4], AttrCRowIncV[4];
 	AttrARowIncV[0] = _mm256_mul_ps(AttrAV[0], AttrRowInc1V);
 	AttrARowIncV[1] = _mm256_mul_ps(AttrAV[1], AttrRowInc1V);
 	AttrARowIncV[2] = _mm256_mul_ps(AttrAV[2], AttrRowInc1V);
+	AttrARowIncV[3] = _mm256_mul_ps(AttrAV[3], AttrRowInc1V);
 
 	AttrBRowIncV[0] = _mm256_mul_ps(AttrBV[0], AttrRowInc2V);
 	AttrBRowIncV[1] = _mm256_mul_ps(AttrBV[1], AttrRowInc2V);
 	AttrBRowIncV[2] = _mm256_mul_ps(AttrBV[2], AttrRowInc2V);
+	AttrBRowIncV[3] = _mm256_mul_ps(AttrBV[3], AttrRowInc2V);
 
 	AttrCRowIncV[0] = _mm256_mul_ps(AttrCV[0], AttrRowInc0V);
 	AttrCRowIncV[1] = _mm256_mul_ps(AttrCV[1], AttrRowInc0V);
 	AttrCRowIncV[2] = _mm256_mul_ps(AttrCV[2], AttrRowInc0V);
-	
+	AttrCRowIncV[3] = _mm256_mul_ps(AttrCV[3], AttrRowInc0V);
+
 	//Add Top Left Rule Bias after Attribute Setup for correct attribute interpolation
 	W0RowV = _mm256_add_epi32(W0RowV, Bias0);
 	W1RowV = _mm256_add_epi32(W1RowV, Bias1);
@@ -801,18 +865,18 @@ internal void fxd_RasterizeTriAVX(IScreenBuffer *Buffer,
 		__m256i W1V = W1RowV;
 		__m256i W2V = W2RowV;
 
-		__m256 AttrWAV[3];
-		__m256 AttrWBV[3];
-		__m256 AttrWCV[3];
+		__m256 AttrWAV[4];
+		__m256 AttrWBV[4];
+		__m256 AttrWCV[4];
 
-		memcpy(AttrWAV, AttrWARowV, 3 * sizeof(*AttrWAV));
-		memcpy(AttrWBV, AttrWBRowV, 3 * sizeof(*AttrWBV));
-		memcpy(AttrWCV, AttrWCRowV, 3 * sizeof(*AttrWCV));
+		memcpy(AttrWAV, AttrWARowV, 4 * sizeof(*AttrWAV));
+		memcpy(AttrWBV, AttrWBRowV, 4 * sizeof(*AttrWBV));
+		memcpy(AttrWCV, AttrWCRowV, 4 * sizeof(*AttrWCV));
 
 		__m256i *Pixels = (__m256i *)Row;
 		fxd_24_8 X = MinX;
 		for(; X < (((MaxX - MinX) & ModuloMask) + MinX); X += 8 * FXD_ONE){
-			__m256 fColorV[3];
+			__m256 fColorV[4];
 			fColorV[0] = _mm256_add_ps(AttrWAV[0], AttrWBV[0]);
 			fColorV[0] = _mm256_add_ps(fColorV[0], AttrWCV[0]);
 
@@ -822,7 +886,10 @@ internal void fxd_RasterizeTriAVX(IScreenBuffer *Buffer,
 			fColorV[2] = _mm256_add_ps(AttrWAV[2], AttrWBV[2]);
 			fColorV[2] = _mm256_add_ps(fColorV[2], AttrWCV[2]);
 
-			__m256i AttrColorV = Float3ToARGBAVX(fColorV);
+			fColorV[3] = _mm256_add_ps(AttrWAV[3], AttrWBV[3]);
+			fColorV[3] = _mm256_add_ps(fColorV[3], AttrWCV[3]);
+
+			__m256i AttrColorV = Float4ToARGBAVX(fColorV);
 
 
 			__m256i Mask = _mm256_or_si256(W0V, W1V);
@@ -843,55 +910,65 @@ internal void fxd_RasterizeTriAVX(IScreenBuffer *Buffer,
 			AttrWAV[0] = _mm256_add_ps(AttrWAV[0], AttrAIncV[0]);
 			AttrWAV[1] = _mm256_add_ps(AttrWAV[1], AttrAIncV[1]);
 			AttrWAV[2] = _mm256_add_ps(AttrWAV[2], AttrAIncV[2]);
+			AttrWAV[3] = _mm256_add_ps(AttrWAV[3], AttrAIncV[3]);
 
 			AttrWBV[0] = _mm256_add_ps(AttrWBV[0], AttrBIncV[0]);
 			AttrWBV[1] = _mm256_add_ps(AttrWBV[1], AttrBIncV[1]);
 			AttrWBV[2] = _mm256_add_ps(AttrWBV[2], AttrBIncV[2]);
+			AttrWBV[3] = _mm256_add_ps(AttrWBV[3], AttrBIncV[3]);
 
 			AttrWCV[0] = _mm256_add_ps(AttrWCV[0], AttrCIncV[0]);
 			AttrWCV[1] = _mm256_add_ps(AttrWCV[1], AttrCIncV[1]);
 			AttrWCV[2] = _mm256_add_ps(AttrWCV[2], AttrCIncV[2]);
+			AttrWCV[3] = _mm256_add_ps(AttrWCV[3], AttrCIncV[3]);
 		}
 
 		unsigned *Pixel = (unsigned *)Pixels;
-		fxd_48_16 W0 = _mm256_cvtsi256_si32(W0V);
-		fxd_48_16 W1 = _mm256_cvtsi256_si32(W1V);
-		fxd_48_16 W2 = _mm256_cvtsi256_si32(W2V);
+		fxd_24_8 W0 = _mm256_cvtsi256_si32(W0V);
+		fxd_24_8 W1 = _mm256_cvtsi256_si32(W1V);
+		fxd_24_8 W2 = _mm256_cvtsi256_si32(W2V);
 
-		float AttrWA[3], AttrWB[3], AttrWC[3];
+		float AttrWA[4], AttrWB[4], AttrWC[4];
 		AttrWA[0] = _mm256_cvtss_f32(AttrWAV[0]);
 		AttrWA[1] = _mm256_cvtss_f32(AttrWAV[1]);
 		AttrWA[2] = _mm256_cvtss_f32(AttrWAV[2]);
+		AttrWA[3] = _mm256_cvtss_f32(AttrWAV[3]);
 
 		AttrWB[0] = _mm256_cvtss_f32(AttrWBV[0]);
 		AttrWB[1] = _mm256_cvtss_f32(AttrWBV[1]);
 		AttrWB[2] = _mm256_cvtss_f32(AttrWBV[2]);
+		AttrWB[3] = _mm256_cvtss_f32(AttrWBV[3]);
 
 		AttrWC[0] = _mm256_cvtss_f32(AttrWCV[0]);
 		AttrWC[1] = _mm256_cvtss_f32(AttrWCV[1]);
 		AttrWC[2] = _mm256_cvtss_f32(AttrWCV[2]);
+		AttrWC[3] = _mm256_cvtss_f32(AttrWCV[3]);
 
-		float AttrAInc[3], AttrBInc[3], AttrCInc[3];
-		AttrAInc[0] = _mm256_cvtss_f32(AttrAIncV[0]);
-		AttrAInc[1] = _mm256_cvtss_f32(AttrAIncV[1]);
-		AttrAInc[2] = _mm256_cvtss_f32(AttrAIncV[2]);
+		float AttrAInc[4], AttrBInc[4], AttrCInc[4];
+		AttrAInc[0] = _mm256_cvtss_f32(AttrAIncV[0]) / 8.0f;
+		AttrAInc[1] = _mm256_cvtss_f32(AttrAIncV[1]) / 8.0f;
+		AttrAInc[2] = _mm256_cvtss_f32(AttrAIncV[2]) / 8.0f;
+		AttrAInc[3] = _mm256_cvtss_f32(AttrAIncV[3]) / 8.0f;
 
-		AttrBInc[0] = _mm256_cvtss_f32(AttrBIncV[0]);
-		AttrBInc[1] = _mm256_cvtss_f32(AttrBIncV[1]);
-		AttrBInc[2] = _mm256_cvtss_f32(AttrBIncV[2]);
+		AttrBInc[0] = _mm256_cvtss_f32(AttrBIncV[0]) / 8.0f;
+		AttrBInc[1] = _mm256_cvtss_f32(AttrBIncV[1]) / 8.0f;
+		AttrBInc[2] = _mm256_cvtss_f32(AttrBIncV[2]) / 8.0f;
+		AttrBInc[3] = _mm256_cvtss_f32(AttrBIncV[3]) / 8.0f;
 
-		AttrCInc[0] = _mm256_cvtss_f32(AttrCIncV[0]);
-		AttrCInc[1] = _mm256_cvtss_f32(AttrCIncV[1]);
-		AttrCInc[2] = _mm256_cvtss_f32(AttrCIncV[2]);
+		AttrCInc[0] = _mm256_cvtss_f32(AttrCIncV[0]) / 8.0f;
+		AttrCInc[1] = _mm256_cvtss_f32(AttrCIncV[1]) / 8.0f;
+		AttrCInc[2] = _mm256_cvtss_f32(AttrCIncV[2]) / 8.0f;
+		AttrCInc[3] = _mm256_cvtss_f32(AttrCIncV[3]) / 8.0f;
 
 
-		
+
 		while(X <= MaxX){
-			float fColor[3] = {0};
+			float fColor[4] = {0};
 			fColor[0] = AttrWA[0] + AttrWB[0] + AttrWC[0];
 			fColor[1] = AttrWA[1] + AttrWB[1] + AttrWC[1];
 			fColor[2] = AttrWA[2] + AttrWB[2] + AttrWC[2];
-			unsigned AttrColor = Float3ToARGB(fColor);
+			fColor[3] = AttrWA[3] + AttrWB[3] + AttrWC[3];
+			unsigned AttrColor = Float4ToARGB(fColor);
 
 			unsigned tmp = *Pixel;
 			tmp = ((W0 | W1 | W2) >= 0) ? AttrColor : tmp;
@@ -903,18 +980,21 @@ internal void fxd_RasterizeTriAVX(IScreenBuffer *Buffer,
 			AttrWA[0] += AttrAInc[0];
 			AttrWA[1] += AttrAInc[1];
 			AttrWA[2] += AttrAInc[2];
+			AttrWA[3] += AttrAInc[3];
 
 			AttrWB[0] += AttrBInc[0];
 			AttrWB[1] += AttrBInc[1];
 			AttrWB[2] += AttrBInc[2];
+			AttrWB[3] += AttrBInc[3];
 
 			AttrWC[0] += AttrCInc[0];
 			AttrWC[1] += AttrCInc[1];
 			AttrWC[2] += AttrCInc[2];
+			AttrWC[3] += AttrCInc[3];
 
 			X += FXD_ONE;
 		}
-		
+
 
 		Row += Buffer->Width;
 		W0RowV = _mm256_add_epi32(RowInc0V, W0RowV);
@@ -924,15 +1004,18 @@ internal void fxd_RasterizeTriAVX(IScreenBuffer *Buffer,
 		AttrWARowV[0] = _mm256_add_ps(AttrWARowV[0], AttrARowIncV[0]);
 		AttrWARowV[1] = _mm256_add_ps(AttrWARowV[1], AttrARowIncV[1]);
 		AttrWARowV[2] = _mm256_add_ps(AttrWARowV[2], AttrARowIncV[2]);
+		AttrWARowV[3] = _mm256_add_ps(AttrWARowV[3], AttrARowIncV[3]);
 
 		AttrWBRowV[0] = _mm256_add_ps(AttrWBRowV[0], AttrBRowIncV[0]);
 		AttrWBRowV[1] = _mm256_add_ps(AttrWBRowV[1], AttrBRowIncV[1]);
 		AttrWBRowV[2] = _mm256_add_ps(AttrWBRowV[2], AttrBRowIncV[2]);
-		
+		AttrWBRowV[3] = _mm256_add_ps(AttrWBRowV[3], AttrBRowIncV[3]);
+
 		AttrWCRowV[0] = _mm256_add_ps(AttrWCRowV[0], AttrCRowIncV[0]);
 		AttrWCRowV[1] = _mm256_add_ps(AttrWCRowV[1], AttrCRowIncV[1]);
 		AttrWCRowV[2] = _mm256_add_ps(AttrWCRowV[2], AttrCRowIncV[2]);
+		AttrWCRowV[3] = _mm256_add_ps(AttrWCRowV[3], AttrCRowIncV[3]);
 	}
-	
+
 
 }

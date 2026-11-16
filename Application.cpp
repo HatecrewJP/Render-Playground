@@ -6,6 +6,35 @@
 
 global struct IDebugContext *GlobalDebugCtx;
 
+struct Stack{
+	char *Data;
+	size_t Size;
+	size_t Capacity;
+};
+
+internal inline int InitStack(void *Memory, size_t MemSize, size_t StackSize, struct Stack *Stack){
+	memset(Stack, 0, sizeof(*Stack));
+	if(MemSize < StackSize) return 0;
+	Stack->Data = (char *)Memory;
+	Stack->Size = Stack->Capacity = StackSize;
+	return 1;
+
+}
+
+internal inline void ResetStack(struct Stack *Stack){
+	Stack->Capacity = Stack->Size;
+}
+internal inline void ZeroResetStack(struct Stack *Stack){
+	memset(Stack->Data, 0, Stack->Size - Stack->Capacity);
+	Stack->Capacity = Stack->Size;
+}
+internal inline void *StackAllocArray(struct Stack *Stack, int ElementSize, int ElementCount){
+	if(Stack->Capacity < ElementSize * ElementCount) return 0;
+	Stack->Capacity -= ElementCount * ElementSize;
+	return (void *)(Stack->Data + Stack->Size - Stack->Capacity);
+}
+
+
 internal inline void SetPixel(IScreenBuffer *Buffer, int X, int Y, unsigned Color){
 	//Assumes that the point is valid
 	//Pixel center is at 0,0
@@ -104,34 +133,33 @@ internal void DrawQuad(IScreenBuffer *Buffer,
 
 
 internal void fxd_DrawQuad(IScreenBuffer *Buffer,
-	fxd_24_8 X1, fxd_24_8 Y1, float Attr1[3],
-	fxd_24_8 X2, fxd_24_8 Y2, float Attr2[3],
-	fxd_24_8 X3, fxd_24_8 Y3, float Attr3[3],
-	fxd_24_8 X4, fxd_24_8 Y4, float Attr4[3],
-	unsigned Color)
-{
+	fxd_24_8 X1, fxd_24_8 Y1, float *Attr1,
+	fxd_24_8 X2, fxd_24_8 Y2, float *Attr2,
+	fxd_24_8 X3, fxd_24_8 Y3, float *Attr3,
+	fxd_24_8 X4, fxd_24_8 Y4, float *Attr4
+){
 	//Diagonal is 2-4
 	fxd_RasterizeTri(Buffer, X1, Y1, Attr1, X2, Y2, Attr2, X4, Y4, Attr4);
 	fxd_RasterizeTri(Buffer, X3, Y3, Attr3, X4, Y4, Attr4, X2, Y2, Attr2);
 }
 
 internal void fxd_DrawQuadSSE(IScreenBuffer *Buffer,
-	fxd_24_8 X1, fxd_24_8 Y1, float Attr1[3],
-	fxd_24_8 X2, fxd_24_8 Y2, float Attr2[3],
-	fxd_24_8 X3, fxd_24_8 Y3, float Attr3[3],
-	fxd_24_8 X4, fxd_24_8 Y4, float Attr4[3],
-	unsigned Color){
+	fxd_24_8 X1, fxd_24_8 Y1, float *Attr1,
+	fxd_24_8 X2, fxd_24_8 Y2, float *Attr2,
+	fxd_24_8 X3, fxd_24_8 Y3, float *Attr3,
+	fxd_24_8 X4, fxd_24_8 Y4, float *Attr4
+){
 	//Diagonal is 2-4
-	fxd_RasterizeTriSSE(Buffer, X1, Y1, Attr1, X2, Y2, Attr2, X4, Y4, Attr4, Color);
-	fxd_RasterizeTriSSE(Buffer, X2, Y2, Attr2, X3, Y3, Attr3, X4, Y4, Attr4, Color);
+	fxd_RasterizeTriSSE(Buffer, X1, Y1, Attr1, X2, Y2, Attr2, X4, Y4, Attr4);
+	fxd_RasterizeTriSSE(Buffer, X2, Y2, Attr2, X3, Y3, Attr3, X4, Y4, Attr4);
 }
 
 internal void fxd_DrawQuadAVX(IScreenBuffer *Buffer,
-	fxd_24_8 X1, fxd_24_8 Y1, float Attr1[3],
-	fxd_24_8 X2, fxd_24_8 Y2, float Attr2[3],
-	fxd_24_8 X3, fxd_24_8 Y3, float Attr3[3],
-	fxd_24_8 X4, fxd_24_8 Y4, float Attr4[3],
-	unsigned Color){
+	fxd_24_8 X1, fxd_24_8 Y1, float *Attr1,
+	fxd_24_8 X2, fxd_24_8 Y2, float *Attr2,
+	fxd_24_8 X3, fxd_24_8 Y3, float *Attr3,
+	fxd_24_8 X4, fxd_24_8 Y4, float *Attr4
+){
 	//Diagonal is 2-4
 	fxd_RasterizeTriAVX(Buffer, X1, Y1,Attr1, X2, Y2,Attr2, X4, Y4,Attr4);
 	fxd_RasterizeTriAVX(Buffer, X2, Y2,Attr2, X3, Y3,Attr3, X4, Y4,Attr4);
@@ -175,29 +203,27 @@ internal void RasterizePoint(IScreenBuffer *Buffer,
 }
 
 internal void fxd_RasterizePoint(IScreenBuffer *Buffer,
-	fxd_24_8 _X, fxd_24_8 _Y,
-	unsigned Color)
+	fxd_24_8 _X, fxd_24_8 _Y, float *Attr)
 {
 	fxd_24_8 X = FxdToIntF(_X - FXD_FRAC_MIN);
 	fxd_24_8 Y = FxdToIntF(_Y - FXD_FRAC_MIN);
 	if(X >= 0 && X <= Buffer->Width && Y >= 0 && Y <= Buffer->Height){
-		*(Buffer->Data + Y * Buffer->Width + X) = Color;
+		*(Buffer->Data + Y * Buffer->Width + X) = Float4ToARGB(Attr);
 	}
 }
 
 internal void fxd_RasterizePoint2(IScreenBuffer *Buffer,
-	fxd_24_8 X, fxd_24_8 Y,
-	unsigned Color){
+	fxd_24_8 X, fxd_24_8 Y,float *Attr){
 	fxd_24_8 TmpX = fxd_Floor(X - FXD_FRAC_MIN) + FXD_HALF;
 	fxd_24_8 TmpY = fxd_Floor(Y - FXD_FRAC_MIN) + FXD_HALF;
 	if(TmpX >= 0 && TmpX <= (IntToFxd(Buffer->Width) - FXD_HALF) && TmpY >= 0 && TmpY <= (IntToFxd(Buffer->Height) - FXD_HALF)){
-		fxd_SetPixel(Buffer, TmpX, TmpY, Color);
+		fxd_SetPixel(Buffer, TmpX, TmpY, Float4ToARGB(Attr));
 	}
 }
 
 internal void fxd_RasterizePoint3(IScreenBuffer *Buffer,
 	fxd_24_8 X, fxd_24_8 Y,
-	float fColor[3])
+	float *fColor)
 {
 	fxd_RasterizeTri(Buffer, X - FXD_HALF, Y - FXD_HALF, fColor, X - FXD_HALF, Y + FXD_HALF, fColor, X + FXD_HALF, Y - FXD_HALF, fColor);
 	fxd_RasterizeTri(Buffer, X - FXD_HALF, Y + FXD_HALF, fColor, X + FXD_HALF, Y + FXD_HALF, fColor, X + FXD_HALF, Y - FXD_HALF, fColor);
@@ -284,8 +310,6 @@ internal void NaiveRasterizeCubicBezierCurve(IScreenBuffer *Buffer,
 }
 
 
-
-
 RENDER_FRAME(RenderFrame){
 	int &Init = *(int*)MemBuffer;
 	*EnableFrameTime = 1;
@@ -295,13 +319,13 @@ RENDER_FRAME(RenderFrame){
 	if(Input->KeyR){
 		Init = 0;
 	}
-
+	static struct Stack RasterStack;
 	if(!Init){
 		printf("fxd_min: %d\n", fxd_min);
 		printf("fxd_max: %d\n", fxd_max);
 		printf("float_fxd_min: %f\n", float_fxd_min);
 		printf("float_fxd_max: %f\n", float_fxd_max);
-
+		InitStack(MemBuffer, MemSize, (1 << 10), &RasterStack);
 		Init++;
 	}
 
@@ -376,10 +400,10 @@ RENDER_FRAME(RenderFrame){
 	fxd_24_8 fxd_X3 = FloatToFxd(NX3); fxd_24_8 fxd_Y3 = FloatToFxd(NY3);
 	fxd_24_8 fxd_X4 = FloatToFxd(NX4); fxd_24_8 fxd_Y4 = FloatToFxd(NY4);
 
-	//fxd_24_8 fxd_X1 = FloatToFxd(0.5f); fxd_24_8 fxd_Y1 = FloatToFxd(0.5f);
-	//fxd_24_8 fxd_X2 = FloatToFxd(0.5f); fxd_24_8 fxd_Y2 = FloatToFxd(9.5f);
-	//fxd_24_8 fxd_X3 = FloatToFxd(9.5f); fxd_24_8 fxd_Y3 = FloatToFxd(9.5f);
-	//fxd_24_8 fxd_X4 = FloatToFxd(9.5f); fxd_24_8 fxd_Y4 = FloatToFxd(0.5f);
+	//fxd_24_8 fxd_X1 = FloatToFxd(0.5f);		fxd_24_8 fxd_Y1 = FloatToFxd(0.5f);
+	//fxd_24_8 fxd_X2 = FloatToFxd(0.5f);		fxd_24_8 fxd_Y2 = FloatToFxd(700.5f);
+	//fxd_24_8 fxd_X3 = FloatToFxd(2400.5f);	fxd_24_8 fxd_Y3 = FloatToFxd(700.5f);
+	//fxd_24_8 fxd_X4 = FloatToFxd(2400.5f);	fxd_24_8 fxd_Y4 = FloatToFxd(0.5f);
 	
 	
 	fxd_24_8 fxd_X5 = FloatToFxd(0.5f); fxd_24_8 fxd_Y5 = FloatToFxd(18.5f);
@@ -387,12 +411,12 @@ RENDER_FRAME(RenderFrame){
 
 	
 
-	float Color1[3] = {255.0f, 0.0f, 0.0f};
-	float Color2[3] = {0.0f, 255.0f,   0.0f};
-	float Color3[3] = {0.0f, 255.0f, 255.0f};
-	float Color4[3] = {0.0f, 0.0f,   255.0f};
-	float Color5[3] = {255.0f, 0.0f,   0.0f};
-	float Color6[3] = {0.0f, 255.0f,   0.0f};
+	float Color1[4] = {255.0f, 0.0f,   0.0f, 255.0f};
+	float Color2[4] = {0.0f, 255.0f,   0.0f, 255.0f};
+	float Color3[4] = {0.0f, 255.0f, 255.0f, 255.0f};
+	float Color4[4] = {0.0f, 0.0f,   255.0f, 255.0f};
+	float Color5[4] = {255.0f, 0.0f,   0.0f, 255.0f};
+	float Color6[4] = {0.0f, 255.0f,   0.0f, 255.0f};
 
 	fxd_RasterizePoint3(Buffer, fxd_X1, fxd_Y1, Color1);
 	fxd_RasterizePoint3(Buffer, fxd_X2, fxd_Y2, Color2);
@@ -405,28 +429,17 @@ RENDER_FRAME(RenderFrame){
 	float TimeElapsed;
 
 
-
-
-	TS1 = DebugCTX->GetTime();
-	fxd_DrawQuad(Buffer, fxd_X1, fxd_Y1, Color1,  fxd_X2, fxd_Y2, Color2, fxd_X3, fxd_Y3, Color3, fxd_X4, fxd_Y4, Color4, 0xffffffff);
-	TS2 = DebugCTX->GetTime();
-	TimeElapsed = (float)((TS2 - TS1) * 1000) / (float)DebugCTX->PerfCountFrequency;
-	printf("Scalar Quad: %f ms\n", TimeElapsed);
+	
 
 	TS1 = DebugCTX->GetTime();
-	fxd_DrawQuadAVX(Buffer, fxd_X1, fxd_Y1, Color1, fxd_X2, fxd_Y2, Color2, fxd_X3, fxd_Y3, Color3, fxd_X4, fxd_Y4, Color4, 0xffff0000);
+	fxd_DrawQuadAVX(Buffer, fxd_X1, fxd_Y1, Color1, fxd_X2, fxd_Y2, Color2, fxd_X3, fxd_Y3, Color3, fxd_X4, fxd_Y4, Color4);
 	TS2 = DebugCTX->GetTime();
 	TimeElapsed = (float)((TS2 - TS1) * 1000) / (float)DebugCTX->PerfCountFrequency;
 	printf("AVX Quad: %f ms\n", TimeElapsed);
-	TS1 = DebugCTX->GetTime();
-	fxd_DrawQuadSSE(Buffer, fxd_X1, fxd_Y1, Color1, fxd_X2, fxd_Y2, Color2, fxd_X3, fxd_Y3, Color3, fxd_X4, fxd_Y4, Color4, 0xffff0000);
-	TS2 = DebugCTX->GetTime();
-	TimeElapsed = (float)((TS2 - TS1) * 1000) / (float)DebugCTX->PerfCountFrequency;
-	printf("SSE Quad: %f ms\n", TimeElapsed);
-
+	
 	fxd_DrawQuadOutline(Buffer, fxd_X1, fxd_Y1, fxd_X2, fxd_Y2, fxd_X3, fxd_Y3, fxd_X4, fxd_Y4, 0xff000000);
 
 	printf("\n");
 	Angle += PI / 360;
-
+	ResetStack(&RasterStack);
 }

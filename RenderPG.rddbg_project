@@ -1,11 +1,12 @@
-// raddbg 0.9.29 project file
+// raddbg 0.9.25 project file
 
 recent_file: path: "Application.cpp"
-recent_file: path: "line.h"
 recent_file: path: "fxd_tri.h"
+recent_file: path: "Win32Platform.cpp"
+recent_file: path: "Application.h"
+recent_file: path: "line.h"
 recent_file: path: "../../a/_work/1/s/src/vctools/crt/vcstartup/src/misc/amd64/chkstk.asm"
 recent_file: path: "fxd.h"
-recent_file: path: "Win32Platform.cpp"
 recent_file: path: "DebugWin32.cpp"
 recent_file: path: "tri.h"
 recent_file: path: "C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/ucrt/corecrt_stdio_config.h"
@@ -23,4 +24,14 @@ target:
   working_directory: "x64/Optimized Debug"
   enabled: 1
   label: Optimized
+}
+debug_info:
+{
+  path: "D:/dev/Render-Playground/x64/Optimized Debug/Platform.pdb"
+  timestamp: 66230813518992
+}
+debug_info:
+{
+  path: "D:/dev/Render-Playground/x64/Optimized Debug/Application.pdb"
+  timestamp: 66231217814039
 }
