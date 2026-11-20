@@ -194,3 +194,15 @@ internal void TriHalfPlanes(IScreenBuffer *Buffer,
 		Row += Buffer->Width;
 	}
 }
+
+
+internal void DrawQuad(IScreenBuffer *Buffer,
+	int X1, int Y1,
+	int X2, int Y2,
+	int X3, int Y3,
+	int X4, int Y4,
+	unsigned Color){
+	//Diagonal is 2-4
+	RasterizeTri(Buffer, X1, Y1, X2, Y2, X4, Y4, Color);
+	RasterizeTri(Buffer, X2, Y2, X3, Y3, X4, Y4, Color);
+}

@@ -6,33 +6,6 @@
 
 global struct IDebugContext *GlobalDebugCtx;
 
-struct Stack{
-	char *Data;
-	size_t Size;
-	size_t Capacity;
-};
-
-internal inline int InitStack(void *Memory, size_t MemSize, size_t StackSize, struct Stack *Stack){
-	memset(Stack, 0, sizeof(*Stack));
-	if(MemSize < StackSize) return 0;
-	Stack->Data = (char *)Memory;
-	Stack->Size = Stack->Capacity = StackSize;
-	return 1;
-
-}
-
-internal inline void ResetStack(struct Stack *Stack){
-	Stack->Capacity = Stack->Size;
-}
-internal inline void ZeroResetStack(struct Stack *Stack){
-	memset(Stack->Data, 0, Stack->Size - Stack->Capacity);
-	Stack->Capacity = Stack->Size;
-}
-internal inline void *StackAllocArray(struct Stack *Stack, int ElementSize, int ElementCount){
-	if(Stack->Capacity < ElementSize * ElementCount) return 0;
-	Stack->Capacity -= ElementCount * ElementSize;
-	return (void *)(Stack->Data + Stack->Size - Stack->Capacity);
-}
 
 
 internal inline void SetPixel(IScreenBuffer *Buffer, int X, int Y, unsigned Color){
@@ -44,7 +17,7 @@ internal inline void SetPixel(IScreenBuffer *Buffer, int X, int Y, unsigned Colo
 
 #include "fxd_tri.h"
 #include "line.h"
-#include "tri.h"
+
 
 internal void SetBackgroundColor(IScreenBuffer *Buffer, unsigned BackgroundColor){
 	unsigned *Pixels = Buffer->Data;
@@ -118,17 +91,6 @@ internal void fxd_RasterizeRectangle(IScreenBuffer *Buffer,
 	}
 }
 
-internal void DrawQuad(IScreenBuffer *Buffer,
-	int X1, int Y1,
-	int X2, int Y2,
-	int X3, int Y3,
-	int X4, int Y4,
-	unsigned Color)
-{
-	//Diagonal is 2-4
-	RasterizeTri(Buffer, X1, Y1, X2, Y2, X4, Y4, Color);
-	RasterizeTri(Buffer, X2, Y2, X3, Y3, X4, Y4, Color);
-}
 
 
 
@@ -312,20 +274,20 @@ internal void NaiveRasterizeCubicBezierCurve(IScreenBuffer *Buffer,
 
 RENDER_FRAME(RenderFrame){
 	int &Init = *(int*)MemBuffer;
-	*EnableFrameTime = 1;
+	*EnableFrameTime = 0;
 	GlobalDebugCtx = DebugCTX;
 	Assert(Buffer);
 	Assert(Buffer->Data);
 	if(Input->KeyR){
 		Init = 0;
 	}
-	static struct Stack RasterStack;
+	
+	
 	if(!Init){
 		printf("fxd_min: %d\n", fxd_min);
 		printf("fxd_max: %d\n", fxd_max);
 		printf("float_fxd_min: %f\n", float_fxd_min);
 		printf("float_fxd_max: %f\n", float_fxd_max);
-		InitStack(MemBuffer, MemSize, (1 << 10), &RasterStack);
 		Init++;
 	}
 
@@ -336,8 +298,7 @@ RENDER_FRAME(RenderFrame){
 	float Y = 700.0f;
 	float Width = 800.0f;
 	float Height = 800.0f;
-	static float Angle = 0.7766720652580261f;
-	//Angle = 0;
+	static float Angle = PI;
 
 
 	float X1, X2, X3, X4;
@@ -411,12 +372,12 @@ RENDER_FRAME(RenderFrame){
 
 	
 
-	float Color1[4] = {255.0f, 0.0f,   0.0f, 255.0f};
-	float Color2[4] = {0.0f, 255.0f,   0.0f, 255.0f};
-	float Color3[4] = {0.0f, 255.0f, 255.0f, 255.0f};
-	float Color4[4] = {0.0f, 0.0f,   255.0f, 255.0f};
-	float Color5[4] = {255.0f, 0.0f,   0.0f, 255.0f};
-	float Color6[4] = {0.0f, 255.0f,   0.0f, 255.0f};
+	float Color1[4] = {255.0f,   0.0f,   0.0f, 255.0f};
+	float Color2[4] = {0.0f,   255.0f,   0.0f, 255.0f};
+	float Color3[4] = {0.0f,   255.0f, 255.0f, 255.0f};
+	float Color4[4] = {0.0f,     0.0f, 255.0f, 255.0f};
+	float Color5[4] = {255.0f,   0.0f,   0.0f, 255.0f};
+	float Color6[4] = {0.0f,   255.0f,   0.0f, 255.0f};
 
 	fxd_RasterizePoint3(Buffer, fxd_X1, fxd_Y1, Color1);
 	fxd_RasterizePoint3(Buffer, fxd_X2, fxd_Y2, Color2);
@@ -441,5 +402,6 @@ RENDER_FRAME(RenderFrame){
 
 	printf("\n");
 	Angle += PI / 360;
-	ResetStack(&RasterStack);
+
+
 }
