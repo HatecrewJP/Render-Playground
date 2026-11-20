@@ -7,6 +7,7 @@
 #define global static
 #define internal static
 #define Assert(x) if(!(x)) __debugbreak();
+#define ArrayCount(x) (sizeof(x)/sizeof((x)[0]))
 typedef unsigned char byte;
 
 

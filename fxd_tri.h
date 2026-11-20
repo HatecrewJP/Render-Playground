@@ -50,6 +50,7 @@ internal bool fxd_TestTopLeftRule(fxd_24_8 AX, fxd_24_8 AY, fxd_24_8 BX, fxd_24_
 }
 
 
+
 internal void fxd_RasterizeTri(IScreenBuffer *Buffer,
 	fxd_24_8 _AX, fxd_24_8 _AY, float *_AttrA,
 	fxd_24_8 _BX, fxd_24_8 _BY, float *_AttrB,
@@ -243,14 +244,6 @@ internal void fxd_RasterizeTri(IScreenBuffer *Buffer,
 
 	}
 }
-
-
-
-
-
-
-
-
 
 internal void fxd_TriHalfPlanes(IScreenBuffer *Buffer,
 	fxd_24_8 AX, fxd_24_8 AY,
@@ -891,7 +884,6 @@ internal void fxd_RasterizeTriAVX(IScreenBuffer *Buffer,
 
 			__m256i AttrColorV = Float4ToARGBAVX(fColorV);
 
-
 			__m256i Mask = _mm256_or_si256(W0V, W1V);
 			Mask = _mm256_or_si256(W2V, Mask);
 			__m256i MaskGt = _mm256_cmpgt_epi32(Mask, _mm256_setzero_si256());
@@ -971,7 +963,7 @@ internal void fxd_RasterizeTriAVX(IScreenBuffer *Buffer,
 			unsigned AttrColor = Float4ToARGB(fColor);
 
 			unsigned tmp = *Pixel;
-			tmp = ((W0 | W1 | W2) >= 0) ? AttrColor : tmp;
+			tmp = (W2 <= 0) ? AttrColor : tmp;
 			*Pixel++ = tmp;
 			W0 += Inc0;
 			W1 += Inc1;
@@ -1019,3 +1011,4 @@ internal void fxd_RasterizeTriAVX(IScreenBuffer *Buffer,
 
 
 }
+

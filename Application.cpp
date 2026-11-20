@@ -40,6 +40,7 @@ internal void SetBackgroundColorSSE(IScreenBuffer *Buffer, unsigned BackgroundCo
 	unsigned *Pixels = Buffer->Data;
 	while(i < IterationCount){
 		*Pixels = BackgroundColor;
+		i++;
 	}
 }
 
@@ -56,6 +57,7 @@ internal void SetBackgroundColorAVX(IScreenBuffer *Buffer, unsigned BackgroundCo
 	unsigned *Pixels = Buffer->Data;
 	while(i < IterationCount){
 		*Pixels = BackgroundColor;
+		i++;
 	}
 }
 
@@ -270,11 +272,135 @@ internal void NaiveRasterizeCubicBezierCurve(IScreenBuffer *Buffer,
 		Pixels[Index] = Color;
 	}
 }
+struct Vertex{
+	float X, Y;
+	union{
+		struct{
+			float R, G, B, A;
+		}Color;
+		float R, G, B, A;
+	};
+};
 
+struct fxd_Vertex{
+	fxd_24_8 X, Y;
+	union{
+		struct{
+			float R, G, B, A;
+		}Color;
+		float ColorArr[4];
+		float R, G, B, A;
+	};
+	
+};
+
+internal void DrawTriangleList(IScreenBuffer *Buffer, Vertex *VertexList, int VertexCount){
+	for(int i = 0; i < (VertexCount & ~2); i+=3){
+		struct fxd_Vertex V1, V2, V3;
+		memcpy(&V1.Color,&VertexList[i+0].Color,sizeof(V1.Color));
+		memcpy(&V2.Color,&VertexList[i+1].Color,sizeof(V2.Color));
+		memcpy(&V3.Color,&VertexList[i+2].Color,sizeof(V3.Color));
+
+		V1.X = FloatToFxd(VertexList[i + 0].X);
+		V2.X = FloatToFxd(VertexList[i + 1].X);
+		V3.X = FloatToFxd(VertexList[i + 2].X);
+
+		V1.Y = FloatToFxd(VertexList[i + 0].Y);
+		V2.Y = FloatToFxd(VertexList[i + 1].Y);
+		V3.Y = FloatToFxd(VertexList[i + 2].Y);
+		fxd_RasterizeTri(Buffer,
+			V1.X, V1.Y, V1.ColorArr,
+			V2.X, V2.Y, V2.ColorArr,
+			V3.X, V3.Y, V3.ColorArr);
+	}
+}
+
+internal void DrawIndexedTriangleList(IScreenBuffer *Buffer, Vertex *VertexList, int VertexCount, int *Indices, int IndexCount){
+	for(int i = 0; i < (IndexCount & ~2); i += 3){
+		int I0, I1, I2;
+		I0 = Indices[i + 0];
+		I1 = Indices[i + 1];
+		I2 = Indices[i + 2];
+
+		struct fxd_Vertex V1, V2, V3;
+		memcpy(&V1.Color, &VertexList[I0].Color, sizeof(V1.Color));
+		memcpy(&V2.Color, &VertexList[I1].Color, sizeof(V2.Color));
+		memcpy(&V3.Color, &VertexList[I2].Color, sizeof(V3.Color));
+
+		V1.X = FloatToFxd(VertexList[I0].X);
+		V2.X = FloatToFxd(VertexList[I1].X);
+		V3.X = FloatToFxd(VertexList[I2].X);
+
+		V1.Y = FloatToFxd(VertexList[I0].Y);
+		V2.Y = FloatToFxd(VertexList[I1].Y);
+		V3.Y = FloatToFxd(VertexList[I2].Y);
+		fxd_RasterizeTri(Buffer,
+			V1.X, V1.Y, V1.ColorArr,
+			V2.X, V2.Y, V2.ColorArr,
+			V3.X, V3.Y, V3.ColorArr);
+	}
+}
+internal void DrawIndexedTriangleListSSE(IScreenBuffer *Buffer, Vertex *VertexList, int VertexCount, int *Indices, int IndexCount){
+	for(int i = 0; i < (IndexCount & ~2); i += 3){
+		int I0, I1, I2;
+		I0 = Indices[i + 0];
+		I1 = Indices[i + 1];
+		I2 = Indices[i + 2];
+
+		struct fxd_Vertex V1, V2, V3;
+		memcpy(&V1.Color, &VertexList[I0].Color, sizeof(V1.Color));
+		memcpy(&V2.Color, &VertexList[I1].Color, sizeof(V2.Color));
+		memcpy(&V3.Color, &VertexList[I2].Color, sizeof(V3.Color));
+
+		V1.X = FloatToFxd(VertexList[I0].X);
+		V2.X = FloatToFxd(VertexList[I1].X);
+		V3.X = FloatToFxd(VertexList[I2].X);
+
+		V1.Y = FloatToFxd(VertexList[I0].Y);
+		V2.Y = FloatToFxd(VertexList[I1].Y);
+		V3.Y = FloatToFxd(VertexList[I2].Y);
+		fxd_RasterizeTriSSE(Buffer,
+			V1.X, V1.Y, V1.ColorArr,
+			V2.X, V2.Y, V2.ColorArr,
+			V3.X, V3.Y, V3.ColorArr);
+	}
+}
+internal void DrawIndexedTriangleListAVX(IScreenBuffer *Buffer, Vertex *VertexList, int VertexCount, int *Indices, int IndexCount){
+	for(int i = 0; i < (IndexCount & ~2); i += 3){
+		int I0, I1, I2;
+		I0 = Indices[i + 0];
+		I1 = Indices[i + 1];
+		I2 = Indices[i + 2];
+
+		struct fxd_Vertex V1, V2, V3;
+		memcpy(&V1.Color, &VertexList[I0].Color, sizeof(V1.Color));
+		memcpy(&V2.Color, &VertexList[I1].Color, sizeof(V2.Color));
+		memcpy(&V3.Color, &VertexList[I2].Color, sizeof(V3.Color));
+
+		V1.X = FloatToFxd(VertexList[I0].X);
+		V2.X = FloatToFxd(VertexList[I1].X);
+		V3.X = FloatToFxd(VertexList[I2].X);
+
+		V1.Y = FloatToFxd(VertexList[I0].Y);
+		V2.Y = FloatToFxd(VertexList[I1].Y);
+		V3.Y = FloatToFxd(VertexList[I2].Y);
+		fxd_RasterizeTriAVX(Buffer,
+			V1.X, V1.Y, V1.ColorArr,
+			V2.X, V2.Y, V2.ColorArr,
+			V3.X, V3.Y, V3.ColorArr);
+	}
+}
+
+internal void ScaleVertexList(struct Vertex *Vertices, int VertexCount, float ScaleX, float ScaleY){
+	for(int i = 0; i < VertexCount; i++){
+		Vertices[i].X *= ScaleX;
+		Vertices[i].Y *= ScaleY;
+	}
+}
 
 RENDER_FRAME(RenderFrame){
 	int &Init = *(int*)MemBuffer;
-	*EnableFrameTime = 0;
+	*EnableFrameTime = 1;
 	GlobalDebugCtx = DebugCTX;
 	Assert(Buffer);
 	Assert(Buffer->Data);
@@ -284,124 +410,65 @@ RENDER_FRAME(RenderFrame){
 	
 	
 	if(!Init){
-		printf("fxd_min: %d\n", fxd_min);
-		printf("fxd_max: %d\n", fxd_max);
-		printf("float_fxd_min: %f\n", float_fxd_min);
-		printf("float_fxd_max: %f\n", float_fxd_max);
+
 		Init++;
 	}
 
 	unsigned BackgroundColor = 0xffa0a0a0;
 	SetBackgroundColorAVX(Buffer, BackgroundColor);
-
-	float X = 1200.0f;
-	float Y = 700.0f;
-	float Width = 800.0f;
-	float Height = 800.0f;
-	static float Angle = PI;
-
-
-	float X1, X2, X3, X4;
-	float Y1, Y2, Y3, Y4;
-
-	X1 = X - (Width / 2); Y1 = Y - (Height / 2);
-	X2 = X - (Width / 2); Y2 = Y + (Height / 2);
-	X3 = X + (Width / 2); Y3 = Y + (Height / 2);
-	X4 = X + (Width / 2); Y4 = Y - (Height / 2);
-
-	float RA, RB, RC, RD;
-
-	RA =  cosf(Angle);
-	RB =  sinf(Angle);
-	RC = -sinf(Angle);
-	RD =  cosf(Angle);
-
-	float NX1, NX2, NX3, NX4;
-	float NY1, NY2, NY3, NY4;
-
-	X1 = X1 - X;
-	X2 = X2 - X;
-	X3 = X3 - X;
-	X4 = X4 - X;
-
-	Y1 = Y1 - Y;
-	Y2 = Y2 - Y;
-	Y3 = Y3 - Y;
-	Y4 = Y4 - Y;
-
-	NX1 = RA * X1 + RC * Y1;
-	NX2 = RA * X2 + RC * Y2;
-	NX3 = RA * X3 + RC * Y3;
-	NX4 = RA * X4 + RC * Y4;
-
-	NY1 = RB * X1 + RD * Y1;
-	NY2 = RB * X2 + RD * Y2;
-	NY3 = RB * X3 + RD * Y3;
-	NY4 = RB * X4 + RD * Y4;
-
-
-	NX1 *= 2; NY1 *= 2;
-	NX2 *= 2; NY2 *= 2;
-	NX3 *= 2; NY3 *= 2;
-	NX4 *= 2; NY4 *= 2;
-
-
-	NX1 = NX1 + X;
-	NX2 = NX2 + X;
-	NX3 = NX3 + X;
-	NX4 = NX4 + X;
-
-	NY1 = NY1 + Y;
-	NY2 = NY2 + Y;
-	NY3 = NY3 + Y;
-	NY4 = NY4 + Y;
-
-	fxd_24_8 fxd_X1 = FloatToFxd(NX1); fxd_24_8 fxd_Y1 = FloatToFxd(NY1);
-	fxd_24_8 fxd_X2 = FloatToFxd(NX2); fxd_24_8 fxd_Y2 = FloatToFxd(NY2);
-	fxd_24_8 fxd_X3 = FloatToFxd(NX3); fxd_24_8 fxd_Y3 = FloatToFxd(NY3);
-	fxd_24_8 fxd_X4 = FloatToFxd(NX4); fxd_24_8 fxd_Y4 = FloatToFxd(NY4);
-
-	//fxd_24_8 fxd_X1 = FloatToFxd(0.5f);		fxd_24_8 fxd_Y1 = FloatToFxd(0.5f);
-	//fxd_24_8 fxd_X2 = FloatToFxd(0.5f);		fxd_24_8 fxd_Y2 = FloatToFxd(700.5f);
-	//fxd_24_8 fxd_X3 = FloatToFxd(2400.5f);	fxd_24_8 fxd_Y3 = FloatToFxd(700.5f);
-	//fxd_24_8 fxd_X4 = FloatToFxd(2400.5f);	fxd_24_8 fxd_Y4 = FloatToFxd(0.5f);
 	
-	
-	fxd_24_8 fxd_X5 = FloatToFxd(0.5f); fxd_24_8 fxd_Y5 = FloatToFxd(18.5f);
-	fxd_24_8 fxd_X6 = FloatToFxd(9.5f); fxd_24_8 fxd_Y6 = FloatToFxd(18.5f);
+	struct Vertex Vertices[12] = {
+		  0.0f,   0.0f, {255.0f,0.0f, 0.0f, 255.f},
+		  0.0f, 100.0f, {255.0f,0.0f, 0.0f, 255.f},
+		100.0f,   0.0f, {255.0f,0.0f, 0.0f, 255.f},
+		
+		  0.0f, 100.0f, {0.0f,255.0f, 0.0f, 255.f},
+		100.0f, 100.0f, {0.0f,255.0f, 0.0f, 255.f},
+		100.0f,   0.0f, {0.0f,255.0f, 0.0f, 255.f},
+		
+		100.0f,   0.0f, {0,0.0f, 255.0f, 255.f},
+		100.0f, 100.0f, {0,0.0f, 255.0f, 255.f},
+		200.0f,   0.0f, {0,0.0f, 255.0f, 255.f},
+		
+		100.0f, 100.0f, {255.0f,0.0f, 0.0f, 255.f},
+		200.0f, 100.0f, {255.0f,0.0f, 0.0f, 255.f},
+		200.0f,   0.0f, {255.0f,0.0f, 0.0f, 255.f},
+	};
+	struct Vertex Vertices2[12] = {
+		  0.0f,   0.0f, {255.0f,    0.0f,   0.0f, 255.f},
+		  0.0f, 100.0f, {255.0f,    0.0f,   0.0f, 255.f},
+		100.0f,   0.0f, {255.0f,    0.0f,   0.0f, 255.f},
+		100.0f, 100.0f, {   0.0f, 255.0f,   0.0f, 255.f},
+		200.0f,   0.0f, {   0.0f,   0.0f, 255.0f, 255.f},
+		200.0f, 100.0f, {255.0f,    0.0f,   0.0f, 255.f},
 
+		  0.0f, 200.0f, {  0.0f,   0.0f, 255.0f, 255.f},
+		100.0f, 200.0f, {255.0f,   0.0f,   0.0f, 255.f},
+		200.0f, 200.0f, {255.0f,   0.0f,   0.0f, 255.f},
+	};
+
+	int Indices[24] = {
+		0,1,2,
+		1,3,2,
+		2,3,4,
+		3,5,4,
+
+		1,6,3,
+		6,7,3,
+		3,7,5,
+		7,8,5
+	};
 	
 
-	float Color1[4] = {255.0f,   0.0f,   0.0f, 255.0f};
-	float Color2[4] = {0.0f,   255.0f,   0.0f, 255.0f};
-	float Color3[4] = {0.0f,   255.0f, 255.0f, 255.0f};
-	float Color4[4] = {0.0f,     0.0f, 255.0f, 255.0f};
-	float Color5[4] = {255.0f,   0.0f,   0.0f, 255.0f};
-	float Color6[4] = {0.0f,   255.0f,   0.0f, 255.0f};
 
-	fxd_RasterizePoint3(Buffer, fxd_X1, fxd_Y1, Color1);
-	fxd_RasterizePoint3(Buffer, fxd_X2, fxd_Y2, Color2);
-	fxd_RasterizePoint3(Buffer, fxd_X3, fxd_Y3, Color3);
-	fxd_RasterizePoint3(Buffer, fxd_X4, fxd_Y4, Color4);
-	fxd_RasterizePoint3(Buffer, fxd_X5, fxd_Y5, Color5);
-	fxd_RasterizePoint3(Buffer, fxd_X6, fxd_Y6, Color6);
+	ScaleVertexList(Vertices2, ArrayCount(Vertices2), 4, 4);
 
-	long long TS1, TS2;
-	float TimeElapsed;
+	DrawIndexedTriangleListAVX(Buffer, Vertices2, ArrayCount(Vertices2), Indices, ArrayCount(Indices));
 
 
 	
 
-	TS1 = DebugCTX->GetTime();
-	fxd_DrawQuadAVX(Buffer, fxd_X1, fxd_Y1, Color1, fxd_X2, fxd_Y2, Color2, fxd_X3, fxd_Y3, Color3, fxd_X4, fxd_Y4, Color4);
-	TS2 = DebugCTX->GetTime();
-	TimeElapsed = (float)((TS2 - TS1) * 1000) / (float)DebugCTX->PerfCountFrequency;
-	printf("AVX Quad: %f ms\n", TimeElapsed);
-	
-	fxd_DrawQuadOutline(Buffer, fxd_X1, fxd_Y1, fxd_X2, fxd_Y2, fxd_X3, fxd_Y3, fxd_X4, fxd_Y4, 0xff000000);
 
-	printf("\n");
-	Angle += PI / 360;
 
 
 }

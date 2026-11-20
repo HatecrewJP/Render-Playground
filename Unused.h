@@ -1028,5 +1028,135 @@ internal void fxd_RasterizeTriAVX2(IScreenBuffer *Buffer,
 
 }
 
+//Unfortunately slow
+struct RasterizerOutputElement{
+	int Index;
+	float BaryA, BaryB, BaryC;
+};
+
+struct RasterizerOutput{
+	struct RasterizerOutputElement *Data;
+	size_t ElementCount;
+};
+
+internal void fxd_RasterizeTri2(IScreenBuffer *Buffer,
+	fxd_24_8 _AX, fxd_24_8 _AY,
+	fxd_24_8 _BX, fxd_24_8 _BY,
+	fxd_24_8 _CX, fxd_24_8 _CY,
+	struct RasterizerOutput *Output
+){
+	//Based on https://fgiesen.wordpress.com/2013/02/08/triangle-rasterization-in-practice/
+	//Input is Y-Down Counter-Clockwise tri. But the math is for Y-Up coordinate systems
+	//Change the orientation by swapping the order of the second and third vertex
+	//Then process this as a Y-Up Counter-Clockwise try
+	fxd_24_8 AX = _AX; fxd_24_8 AY = _AY;
+	fxd_24_8 BX = _CX; fxd_24_8 BY = _CY;
+	fxd_24_8 CX = _BX; fxd_24_8 CY = _BY;
+
+
+	fxd_24_8 Area = fxd_TriOrientationS(AX, AY, BX, BY, CX, CY);
+	// Orientation < 0: Clockwise Orientation
+	// Orientation == 0: Triangle with Area 0
+	if(Area <= 0){
+		return;
+	}
+
+	fxd_24_8 MinX = fxd_Floor(fxd_Min3(AX, BX, CX)) + FXD_HALF;
+	fxd_24_8 MinY = fxd_Floor(fxd_Min3(AY, BY, CY)) + FXD_HALF;
+	fxd_24_8 MaxX = fxd_Floor(fxd_Max3(AX, BX, CX)) + FXD_HALF;
+	fxd_24_8 MaxY = fxd_Floor(fxd_Max3(AY, BY, CY)) + FXD_HALF;
+
+	if(MinX < FXD_HALF){
+		MinX = FXD_HALF;
+	}
+	if(MinY < FXD_HALF){
+		MinY = FXD_HALF;
+	}
+	if(MaxX >= IntToFxd(Buffer->Width) - FXD_HALF){
+		MaxX = IntToFxd(Buffer->Width) - FXD_HALF;
+	}
+	if(MaxY >= IntToFxd(Buffer->Height) - FXD_HALF){
+		MaxY = IntToFxd(Buffer->Height) - FXD_HALF;
+	}
+
+	//Setup Position Interpolation
+	fxd_24_8 Inc0 = (AY - BY);
+	fxd_24_8 Inc1 = (BY - CY);
+	fxd_24_8 Inc2 = (CY - AY);
+
+	fxd_24_8 RowInc0 = (BX - AX);
+	fxd_24_8 RowInc1 = (CX - BX);
+	fxd_24_8 RowInc2 = (AX - CX);
+
+	fxd_24_8 PX = MinX;
+	fxd_24_8 PY = MinY;
+
+	fxd_24_8 Bias0 = fxd_TestTopLeftRule(BX, BY, AX, AY) ? 0 : -FXD_FRAC_MIN;
+	fxd_24_8 Bias1 = fxd_TestTopLeftRule(CX, CY, BX, BY) ? 0 : -FXD_FRAC_MIN;
+	fxd_24_8 Bias2 = fxd_TestTopLeftRule(AX, AY, CX, CY) ? 0 : -FXD_FRAC_MIN;
+
+	fxd_24_8 W0Row = fxd_TriOrientationS(AX, AY, BX, BY, PX, PY);
+	fxd_24_8 W1Row = fxd_TriOrientationS(BX, BY, CX, CY, PX, PY);
+	fxd_24_8 W2Row = fxd_TriOrientationS(AX, AY, PX, PY, CX, CY);
+
+	//Setup Attribute Interpolation
+	float BaryARow = FxdToFloat(W1Row) / FxdToFloat(Area);
+	float BaryBRow = FxdToFloat(W2Row) / FxdToFloat(Area);
+	float BaryCRow = FxdToFloat(W0Row) / FxdToFloat(Area);
+
+	float BaryAInc = FxdToFloat(Inc1) / FxdToFloat(Area);
+	float BaryBInc = FxdToFloat(Inc2) / FxdToFloat(Area);
+	float BaryCInc = FxdToFloat(Inc0) / FxdToFloat(Area);
+
+	float BaryARowInc = FxdToFloat(RowInc1) / FxdToFloat(Area);
+	float BaryBRowInc = FxdToFloat(RowInc2) / FxdToFloat(Area);
+	float BaryCRowInc = FxdToFloat(RowInc0) / FxdToFloat(Area);
+
+	//Add Bias after calculating weights for correct Attribute Interpolation
+	W0Row += Bias0;
+	W1Row += Bias1;
+	W2Row += Bias2;
+	struct RasterizerOutputElement *El = Output->Data;
+	unsigned *Row = Buffer->Data + FxdToIntF(PY) * Buffer->Width + FxdToIntF(PX);
+	Assert(FxdToIntF(MaxX) * FxdToIntF(MaxY) <= Output->ElementCount);
+	for(fxd_24_8 Y = MinY; Y <= MaxY; Y += FXD_ONE){
+		fxd_24_8 W0 = W0Row;
+		fxd_24_8 W1 = W1Row;
+		fxd_24_8 W2 = W2Row;
+
+		float BaryA = BaryARow;
+		float BaryB = BaryBRow;
+		float BaryC = BaryCRow;
+
+
+
+		unsigned *Pixels = Row;
+		int Index = FxdToIntF(Y) * Buffer->Width + FxdToIntF(PX);
+		for(fxd_24_8 X = MinX; X <= MaxX; X += FXD_ONE){
+			El->Index = ((W0 | W1 | W2) >= 0) ? Index : -1;
+			El->BaryA = ((W0 | W1 | W2) >= 0) ? BaryA : 0;
+			El->BaryB = ((W0 | W1 | W2) >= 0) ? BaryC : 0;
+			El->BaryC = ((W0 | W1 | W2) >= 0) ? BaryB : 0;
+			El += ((W0 | W1 | W2) >= 0) ? 1 : 0;
+			Index++;
+			W0 += Inc0;
+			W1 += Inc1;
+			W2 += Inc2;
+			BaryA += BaryAInc;
+			BaryB += BaryBInc;
+			BaryC += BaryCInc;
+		}
+		Row += Buffer->Width;
+		W0Row += RowInc0;
+		W1Row += RowInc1;
+		W2Row += RowInc2;
+
+		BaryARow += BaryARowInc;
+		BaryBRow += BaryBRowInc;
+		BaryCRow += BaryCRowInc;
+
+	}
+}
+
 
 

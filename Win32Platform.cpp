@@ -16,8 +16,11 @@
 
 #define ArrayCount(x) (sizeof(x)/sizeof((x)[0]))
 #define ToBit(x) ((x)*8)
+#define KiB(x) ((x) * 1024LLU)
+#define MiB(x) (KiB(x) * 1024LLU)
+#define GiB(x) (MiB(x) * 1024LLU)
+#define TiB(x) (GiB(x) * 1024LLU)
 
-//#include "Application.cpp"
 
 
 struct Win32FrameBuffer{
@@ -255,7 +258,7 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 	BackBuffer.Width  = CurrentRect.right - CurrentRect.left;
 	BackBuffer.Height = CurrentRect.bottom - CurrentRect.top;
 	BackBuffer.PixelSize = sizeof(unsigned);
-	BackBuffer.Data = (unsigned*)VirtualAlloc(NULL, BackBuffer.Width * BackBuffer.Height * BackBuffer.PixelSize, MEM_COMMIT, PAGE_READWRITE);
+	BackBuffer.Data = (unsigned*)VirtualAlloc((LPVOID)TiB(3), BackBuffer.Width * BackBuffer.Height * BackBuffer.PixelSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 	BackBuffer.Stride = BackBuffer.Width * BackBuffer.PixelSize;
 	Assert(BackBuffer.Data);
 
@@ -283,8 +286,8 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
 	AppDebugCTX.GetTime = DebugGetTime;
 #endif
 
-	int MemSize = (1 << 20);
-	void *MemBuffer = VirtualAlloc(0, (SIZE_T) MemSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	int MemSize = (1 << 28);
+	void *MemBuffer = VirtualAlloc((LPVOID)TiB(2), (SIZE_T)MemSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 	Assert(MemBuffer);
 
 	bool PrintFrameTime;
